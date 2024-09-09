@@ -1,0 +1,15 @@
+# Ignore IDE configuration files (e.g., JetBrains .idea folder)
+.idea/
+
+# Ignore Python virtual environments
+venv/
+.VENV/
+env/
+ENV/
+
+# Ignore Python cache files and folders
+__pycache__/
+*.py[cod]
+
+# Ignore macOS specific files
+.DS_Store
