@@ -1,0 +1,30 @@
+text_to_sql_project/
+│
+├── app/
+│   ├── __init__.py
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── routes.py            # Renamed from endpoints.py
+│   │
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── nlp_processor.py     # No change
+│   │   ├── cubejs_client.py     # No change
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── schemas.py           # Merged schemas from different files
+│   │
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── logger.py            # No change
+│   │   ├── helpers.py           # No change
+│   │
+│   ├── vector_store/
+│   │   ├── __init__.py
+│   │   ├── store_manager.py     # Renamed from vector_store.py
+│   │
+├── main.py                      # No change
+├── requirements.txt             # Add necessary dependencies
+└── README.md                    # Project documentation
+

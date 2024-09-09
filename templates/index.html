@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversational UI with Feedback and Unique Colors</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eaeaea; /* Subtle grey background */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar styles */
+        .sidebar {
+            width: 250px;
+            background-color: #d0d0d0; /* Muted grey */
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h3 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        .conversation-list {
+            margin-top: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .conversation-item {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .conversation-item:hover {
+            background-color: #b0b0b0;
+        }
+
+        /* Chat container styles */
+        .chat-container {
+            flex-grow: 1;
+            height: 100%;
+            background-color: #f5f5f5; /* Light muted grey */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-header {
+            padding: 20px;
+            background-color: #666666; /* Muted dark grey */
+            color: #f0f0f0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .chat-box {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .message.user {
+            background-color: #8e8e8e; /* Subtle grey */
+            color: #ffffff;
+            align-self: flex-end;
+        }
+
+        .message.api {
+            background-color: #dddddd; /* Light muted grey */
+            color: #333333;
+            align-self: flex-start;
+        }
+
+        /* Feedback container */
+        .feedback-container {
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        .feedback-icons {
+            display: flex;
+            justify-content: space-between;
+            width: 100px;
+            margin-top: 5px;
+        }
+
+        .feedback-message {
+            margin-top: 10px;
+            display: none; /* Hidden by default, shown on click */
+        }
+
+        .feedback-message textarea {
+            width: 100%;
+            height: 50px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+
+        .feedback-message button {
+            margin-top: 5px;
+            background-color: #666666;
+            color: white;
+            padding: 8px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .input-container {
+            padding: 20px;
+            background-color: #f1f1f1;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-container input {
+            flex-grow: 1;
+            padding: 15px;
+            background-color: #e0e0e0; /* Light grey */
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+
+        .input-container button {
+            padding: 15px;
+            background-color: #666666; /* Dark grey */
+            color: #fff;
+            border: none;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .input-container button:hover {
+            background-color: #4e4e4e;
+        }
+
+        .typing-indicator {
+            font-style: italic;
+            color: #555;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #f1f1f1;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #666666; /* Dark grey progress bar */
+            width: 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar for conversation history -->
+<div class="sidebar">
+    <h3>Conversation History</h3>
+    <div class="conversation-list">
+        <!-- Previous conversations will be dynamically added here -->
+    </div>
+</div>
+
+<!-- Chat container -->
+<div class="chat-container">
+    <div class="chat-header">
+        LLM + CubeJS Demo
+    </div>
+    <div class="chat-box" id="chat-box">
+        <!-- Chat history will be dynamically added here -->
+    </div>
+    <div id="typing-indicator" class="typing-indicator" style="display: none;">Assistant is typing...</div>
+    <div class="progress-bar" id="progress-bar" style="display: none;">
+        <div class="progress" id="progress"></div>
+    </div>
+    <div class="input-container">
+        <input type="text" id="question-input" placeholder="Type your question here..." />
+        <button onclick="askQuestion()">Ask</button>
+    </div>
+</div>
+
+<script>
+    function askQuestion() {
+        const question = document.getElementById('question-input').value;
+        if (question.trim() === '') return;
+
+        const chatBox = document.getElementById('chat-box');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const progressBar = document.getElementById('progress-bar');
+        const progress = document.getElementById('progress');
+
+        // Append user question to the chat box
+        const userMessage = document.createElement('div');
+        userMessage.className = 'message user';
+        userMessage.textContent = question;
+        chatBox.appendChild(userMessage);
+
+        // Clear the input field
+        document.getElementById('question-input').value = '';
+
+        // Show the typing indicator and progress bar
+        typingIndicator.style.display = 'block';
+        progressBar.style.display = 'block';
+
+        // Simulate progress bar increment (just for visual effect)
+        let progressValue = 0;
+        const interval = setInterval(() => {
+            if (progressValue < 100) {
+                progressValue += 5;
+                progress.style.width = progressValue + '%';
+            }
+        }, 100);
+
+        // Send question to the FastAPI server
+        fetch('/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: question }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            clearInterval(interval); // Stop progress bar
+            typingIndicator.style.display = 'none'; // Hide typing indicator
+            progressBar.style.display = 'none'; // Hide progress bar
+
+            // Append API response to the chat box
+            const apiMessage = document.createElement('div');
+            apiMessage.className = 'message api';
+            apiMessage.textContent = data.formatted_data;
+            chatBox.appendChild(apiMessage);
+
+            // Feedback icons
+            const feedbackContainer = document.createElement('div');
+            feedbackContainer.className = 'feedback-container';
+            feedbackContainer.innerHTML = `
+                <div class="feedback-icons">
+                    <span class="thumbs-up">👍</span>
+                    <span class="thumbs-down">👎</span>
+                </div>
+                <div class="feedback-message">
+                    <textarea placeholder="Your feedback"></textarea>
+                    <button>Submit</button>
+                </div>
+            `;
+            chatBox.appendChild(feedbackContainer);
+
+            // Show feedback textarea on thumbs up/down click
+            feedbackContainer.querySelector('.thumbs-up').addEventListener('click', () => {
+                feedbackContainer.querySelector('.feedback-message').style.display = 'block';
+            });
+
+            feedbackContainer.querySelector('.thumbs-down').addEventListener('click', () => {
+                feedbackContainer.querySelector('.feedback-message').style.display = 'block';
+            });
+
+            chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            clearInterval(interval);
+            typingIndicator.style.display = 'none';
+            progressBar.style.display = 'none';
+        });
+    }
+</script>
+</body>
+</html>
