@@ -19,4 +19,8 @@ build~=1.2.1
 jinja2
 faiss-cpu
 streamlit
+streamlit_chat
+matplotlib
+langchain_community
+langchain_openai
 

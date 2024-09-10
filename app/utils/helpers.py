@@ -188,9 +188,15 @@ def format_data_with_openai(user_query: str, cubejs_data: dict) -> str:
             {data}
             
             Instructions:
-            - Format the response in a clear and concise manner.
-            - Provide relevant information in response to the user's query.
+            - Format the response in a clear, concise, and well-structured manner.
+            - For lists of items or categories, use bullet points or numbered lists.
+            - If the user asks for tabular data, format it using a markdown table.
             - Ensure the response is easy to understand and addresses the user's question effectively.
+            - If the data contains numerical values, return it in a format that can be used to generate a plot (e.g., a dictionary of categories and values).
+            - Provide any text responses separately from the data, making sure the data is clearly structured for visualization.
+
+
+
             
             Response:
             """

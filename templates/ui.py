@@ -1,19 +1,21 @@
 import streamlit as st
 import requests
+import json
+import matplotlib.pyplot as plt
 
 # Set the app title
-st.title("Cube AI API Demo")
+st.title("Cube AI API Demo with Plotting")
 
 # Initialize chat history in session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display past messages with adjusted alignment
+# Display past messages
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.markdown(f'<div style="text-align: right;">{message["content"]}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(message["content"])  # Default alignment for assistant is left
+        st.markdown(message["content"], unsafe_allow_html=True)
 
 # Get user input
 if prompt := st.chat_input("What's on your mind?"):
@@ -35,8 +37,30 @@ if prompt := st.chat_input("What's on your mind?"):
             # Add bot response to chat history
             st.session_state.messages.append({"role": "assistant", "content": answer})
 
-            # Display assistant response (default left alignment)
-            st.markdown(answer)
+            # Display assistant response (text part)
+            st.markdown(answer, unsafe_allow_html=True)
+
+            # Extract the dictionary for plotting from the LLM response (if present)
+            if "{" in answer and "}" in answer:  # Checking if JSON-like structure is present
+                start = answer.find("{")
+                end = answer.find("}") + 1
+                plot_data_str = answer[start:end]
+
+                # Convert the extracted string to a Python dictionary
+                plot_data = json.loads(plot_data_str)
+
+                # Plot the data using matplotlib
+                categories = list(plot_data.keys())
+                values = list(plot_data.values())
+
+                fig, ax = plt.subplots()
+                ax.bar(categories, values)
+                ax.set_xlabel("Product Categories")
+                ax.set_ylabel("Product Count")
+                ax.set_title("Product Categories vs. Number of Products")
+
+                # Display the plot in Streamlit
+                st.pyplot(fig)
 
         else:
             # Handle errors from FastAPI
