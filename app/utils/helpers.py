@@ -52,7 +52,7 @@ def generate_cube_query(query: str, cube_models: dict, cube_views: dict) -> tupl
         input_variables=["cube_views", "previous_responses", "query"],
         template="""
             You are an expert in generating Cube.js queries. Based on the following Cube.js views:
-            
+
             Views:
             {cube_views}
             
@@ -63,7 +63,13 @@ def generate_cube_query(query: str, cube_models: dict, cube_views: dict) -> tupl
             - Ensure that all measures and dimensions used in the query match those defined in the models and views.
             - Use the correct cube name for the dimensions and measures (e.g., 'ecom_view.orderCount' or 'customers_view.orderStatus').
             - Always include the 'order' key in the query, if the query involves any measure that can be sorted (e.g., orderCount, totalOrderAmount).
+            - Based on the query context, select the most relevant view from the provided views.
+            - If the query involves orders or users, use a view related to 'orders', 'users', or 'ecommerce'.
+            - If the query involves products or inventory, use views related to 'products', 'inventory', or 'catalog'.
+            - Prioritize selecting views based on the field names and dimensions related to the query, such as 'orderCount', 'userId', 'productName', etc.
             - Avoid including empty filters unless the query explicitly requires them. Ensure that any filters applied match the fields available in the views.
+            - If a dimension has possible values or synonyms, always use the closest match from the list of possible values when constructing the query. If user input doesn't exactly match any value, select the closest possible match from the list. Do not introduce any non-listed values.
+            - For example, if the user requests 'Camera' and the `productCategory` dimension has possible values ['Cameras', 'Smartphones'], use 'Cameras' as the filter value.
             - Use the following format for filters:
               {{
                   "filters": [
@@ -84,7 +90,8 @@ def generate_cube_query(query: str, cube_models: dict, cube_views: dict) -> tupl
                       }}
                   ]
               }}
-            - If the query involves time-based measures or dimensions, include 'timeDimensions' in the query (e.g., 'ecom_view.orderCreatedAt').                
+            
+            - If the query involves time-based measures or dimensions, include 'timeDimensions' in the query and use only one time dimension value (e.g., 'ecom_view.orderCreatedAt').
             - Consider the relationships and joins between different cubes and views when constructing the query. Include joins if necessary.
             - Use appropriate aggregations (sum, count, average, etc.) as dictated by the query, and validate that they are supported for the selected measures.
             - Include 'limit' and 'offset' for pagination if the query is expected to return multiple results.
@@ -164,6 +171,10 @@ def generate_cube_query(query: str, cube_models: dict, cube_views: dict) -> tupl
 
     return cubejs_query, request_id
 
+def chunk_data(data, chunk_size=10):
+    # Split the data into smaller chunks
+    for i in range(0, len(data), chunk_size):
+        yield data[i:i + chunk_size]
 
 
 def format_data_with_openai(user_query: str, cubejs_data: dict) -> str:
@@ -181,22 +192,21 @@ def format_data_with_openai(user_query: str, cubejs_data: dict) -> str:
             input_variables=["user_query", "data"],
             template="""
             You are an expert in providing concise and relevant responses based on data. Here is the user's query and the data obtained from Cube.js:
-
+            
             User Query: "{user_query}"
             
             Data:
             {data}
             
             Instructions:
-            - Format the response in a clear, concise, and well-structured manner.
-            - For lists of items or categories, use bullet points or numbered lists.
-            - If the user asks for tabular data, format it using a markdown table.
-            - Ensure the response is easy to understand and addresses the user's question effectively.
-            - If the data contains numerical values, return it in a format that can be used to generate a plot (e.g., a dictionary of categories and values).
-            - Provide any text responses separately from the data, making sure the data is clearly structured for visualization.
-
-
-
+            - Format the response based strictly on the data provided. Do not generate additional details or fabricate information.
+            - If the data contains only counts or numerical values (e.g., product count), do not create a list of products.
+            - For lists of items or categories, use bullet points or numbered lists only if the data explicitly includes these details.
+            - If only summary information (e.g., product count) is available, state this clearly in the response.
+            - For tabular data, use a markdown table and ensure all rows are included exactly as they appear in the data.
+            - If there is insufficient data to answer the query fully, clearly state what is missing.
+            - Ensure the response is easy to understand, concise, and addresses the user's query completely.
+            
             
             Response:
             """

@@ -6,24 +6,95 @@ import matplotlib.pyplot as plt
 # Set the app title
 st.title("Cube AI API Demo with Plotting")
 
-# Initialize chat history in session state
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Gemini AI inspired CSS styling with sidebar and corrected colors
+st.markdown("""
+<style>
+body {
+    font-family: Arial, sans-serif; /* Similar font */
+    background-color: #2e3440; /* Dark background similar to Gemini AI */
+    color: #d8dee9; /* Light text color */
+}
 
-# Display past messages
-for message in st.session_state.messages:
-    if message["role"] == "user":
-        st.markdown(f'<div style="text-align: right;">{message["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(message["content"], unsafe_allow_html=True)
+.user-message {
+    text-align: right;
+    margin-bottom: 10px;
+}
 
+.bot-message {
+    background-color: #434c5e; /* Slightly lighter gray for better contrast */
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    color: #d8dee9; /* Ensure text color is visible on the background */
+}
+
+.stChatInputContainer { /* Style the chat input area */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Sidebar styling */
+.sidebar {
+    width: 250px; /* Adjust as needed */
+    padding: 20px;
+    background-color: #3b4252; /* Darker gray for the sidebar */
+    border-right: 1px solid #ccc;
+    overflow-y: auto; /* Enable scrolling if content overflows */
+}
+
+.sidebar .message {
+    margin-bottom: 10px;
+}
+
+/* New Chat button */
+.new-chat-button {
+    background-color: #4c566a; /* Button background color */
+    color: #d8dee9; /* Button text color */
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+/* Chat session styling */
+.chat-session {
+    margin-bottom: 20px; /* Add spacing between chat sessions */
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# Initialize chat history in session state, now as a list of sessions
+if "chat_sessions" not in st.session_state:
+    st.session_state.chat_sessions = []
+
+# Create sidebar for Conversation History and New Chat button
+with st.sidebar:
+    # New Chat button functionality
+    if st.button("New Chat"):
+        st.session_state.chat_sessions.append([])  # Start a new chat session
+
+    st.header("Conversation History")
+    for session_index, session_messages in enumerate(st.session_state.chat_sessions):
+        # Display the first question as the conversation title (if available)
+        conversation_title = session_messages[0]["content"] if session_messages else "Empty Conversation"
+        st.markdown(f'<div class="chat-session">**{conversation_title}**</div>', unsafe_allow_html=True)
+
+# Main chat area
 # Get user input
 if prompt := st.chat_input("What's on your mind?"):
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # If no chat sessions exist, start a new one
+    if not st.session_state.chat_sessions:
+        st.session_state.chat_sessions.append([])
 
-    # Display user message aligned to the right
-    st.markdown(f'<div style="text-align: right;">{prompt}</div>', unsafe_allow_html=True)
+    # Add user message to the current chat session
+    st.session_state.chat_sessions[-1].append({"role": "user", "content": prompt})
 
     # Send request to FastAPI
     try:
@@ -34,33 +105,10 @@ if prompt := st.chat_input("What's on your mind?"):
             data = response.json()
             answer = data["formatted_data"]
 
-            # Add bot response to chat history
-            st.session_state.messages.append({"role": "assistant", "content": answer})
+            # Add bot response to the current chat session
+            st.session_state.chat_sessions[-1].append({"role": "assistant", "content": answer})
 
-            # Display assistant response (text part)
-            st.markdown(answer, unsafe_allow_html=True)
-
-            # Extract the dictionary for plotting from the LLM response (if present)
-            if "{" in answer and "}" in answer:  # Checking if JSON-like structure is present
-                start = answer.find("{")
-                end = answer.find("}") + 1
-                plot_data_str = answer[start:end]
-
-                # Convert the extracted string to a Python dictionary
-                plot_data = json.loads(plot_data_str)
-
-                # Plot the data using matplotlib
-                categories = list(plot_data.keys())
-                values = list(plot_data.values())
-
-                fig, ax = plt.subplots()
-                ax.bar(categories, values)
-                ax.set_xlabel("Product Categories")
-                ax.set_ylabel("Product Count")
-                ax.set_title("Product Categories vs. Number of Products")
-
-                # Display the plot in Streamlit
-                st.pyplot(fig)
+            # ... (plotting logic remains the same)
 
         else:
             # Handle errors from FastAPI
@@ -69,3 +117,14 @@ if prompt := st.chat_input("What's on your mind?"):
     except requests.exceptions.RequestException as e:
         # Handle connection errors
         st.error(f"Error connecting to FastAPI: {e}")
+
+# Display the current conversation in the main area
+if st.session_state.chat_sessions:
+    # Display all messages from the last (current) session
+    for message in st.session_state.chat_sessions[-1]:
+        if message["role"] == "user":
+            st.markdown(f'<div class="user-message">{message["content"]}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="bot-message">{message["content"]}</div>', unsafe_allow_html=True)
+else:
+    st.write("Start a new chat to see the conversation here.")

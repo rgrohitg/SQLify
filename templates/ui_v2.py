@@ -1,157 +1,137 @@
 import streamlit as st
 import requests
+import json
+import matplotlib.pyplot as plt
 
 # Set the app title
-st.title("Cube AI API Demo")
+st.title("Cube AI API Demo with Plotting")
 
-# Add custom CSS for ChatGPT-like styling
-def add_custom_css():
-    st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+# Gemini AI inspired CSS styling with sidebar and corrected colors
+st.markdown("""
+<style>
+body {
+    font-family: Arial, sans-serif; /* Similar font */
+    background-color: #2e3440; /* Dark background similar to Gemini AI */
+    color: #d8dee9; /* Light text color */
+}
 
-            body, input, textarea {
-                font-family: 'Inter', sans-serif;
-                font-size: 16px;
-            }
+.user-message {
+    text-align: right;
+    margin-bottom: 10px;
+}
 
-            .user-message {
-                background-color: #0056D2;
-                color: white;
-                font-size: 16px;
-                font-weight: 500;
-                border-radius: 10px;
-                padding: 10px;
-                margin-bottom: 10px;
-                max-width: 60%;
-                align-self: flex-end;
-                text-align: right;
-            }
+.bot-message {
+    background-color: #434c5e; /* Slightly lighter gray for better contrast */
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    color: #d8dee9; /* Ensure text color is visible on the background */
+}
 
-            .bot-message {
-                background-color: #E1E1E1;
-                color: #444;
-                font-size: 16px;
-                border-radius: 10px;
-                padding: 10px;
-                margin-bottom: 10px;
-                max-width: 60%;
-                text-align: left;
-            }
+.stChatInputContainer { /* Style the chat input area */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+}
 
-            .feedback {
-                display: flex;
-                gap: 10px;
-                margin-top: -5px;
-            }
+/* Sidebar styling */
+.sidebar {
+    width: 250px; /* Adjust as needed */
+    padding: 20px;
+    background-color: #3b4252; /* Darker gray for the sidebar */
+    border-right: 1px solid #ccc;
+    overflow-y: auto; /* Enable scrolling if content overflows */
+}
 
-            .feedback button {
-                border: none;
-                background-color: transparent;
-                font-size: 20px;
-                cursor: pointer;
-                padding: 0;
-            }
+.sidebar .message {
+    margin-bottom: 10px;
+}
 
-            .fixed-bottom-input {
-                position: fixed;
-                bottom: 0;
-                width: 100%;
-                left: 0;
-                background-color: #FFFFFF;
-                padding: 10px 15px;
-                box-shadow: 0px -3px 5px rgba(0, 0, 0, 0.1);
-                display: flex;
-                align-items: center;
-                z-index: 99;
-            }
+/* New Chat button */
+.new-chat-button {
+    background-color: #4c566a; /* Button background color */
+    color: #d8dee9; /* Button text color */
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 5px;
+}
 
-            .chat-container {
-                display: flex;
-                flex-direction: column;
-                padding-bottom: 100px;  /* Avoid overlapping input */
-                max-height: 70vh;       /* Limit the chat height */
-                overflow-y: auto;
-            }
+/* Chat session styling */
+.chat-session {
+    margin-bottom: 20px; /* Add spacing between chat sessions */
+}
+</style>
+""", unsafe_allow_html=True)
 
-            .send-icon {
-                background-color: #0056D2;
-                color: white;
-                font-size: 20px;
-                border: none;
-                border-radius: 50%;
-                padding: 10px;
-                margin-left: 10px;
-                cursor: pointer;
-            }
+import streamlit as st
+import requests
+import json
+import matplotlib.pyplot as plt
 
-        </style>
-    """, unsafe_allow_html=True)
-
-add_custom_css()
+# ... (CSS styling remains the same)
 
 # Initialize chat history in session state
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "chat_sessions" not in st.session_state:
+    st.session_state.chat_sessions = []
 
-# Function to display thumbs up/down feedback
-def display_feedback(message_index):
-    col1, col2 = st.columns([1, 1])
+# Create sidebar for Conversation History and New Chat button
+with st.sidebar:
+    # New Chat button functionality
+    if st.button("New Chat"):
+        st.session_state.chat_sessions.append([])  # Start a new chat session
 
-    with col1:
-        if st.button("👍", key=f'thumbs_up_{message_index}', help="Thumbs up"):
-            st.success("You gave thumbs up!")
-            # Send feedback to your API or log the action
+    st.header("Conversation History")
+    for session_index, session_messages in enumerate(st.session_state.chat_sessions):
+        # Display the first question as the conversation title (if available)
+        conversation_title = session_messages[0]["content"] if session_messages else "Empty Conversation"
+        st.markdown(f'<div class="chat-session">**{conversation_title}**</div>', unsafe_allow_html=True)
 
-    with col2:
-        if st.button("👎", key=f'thumbs_down_{message_index}', help="Thumbs down"):
-            st.error("You gave thumbs down!")
-            # Send feedback to your API or log the action
+# Main chat area
+# Get user input
+if prompt := st.chat_input("What's on your mind?"):
+    # If no chat sessions exist, start a new one
+    if not st.session_state.chat_sessions:
+        st.session_state.chat_sessions.append([])
 
-# Display chat history
-if st.session_state.messages:
-    st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-    for i, message in enumerate(st.session_state.messages):
+    # Add user message to the current chat session
+    st.session_state.chat_sessions[-1].append({"role": "user", "content": prompt})
+
+    # Display the entire current conversation, including the new question
+    for message in st.session_state.chat_sessions[-1]:
         if message["role"] == "user":
             st.markdown(f'<div class="user-message">{message["content"]}</div>', unsafe_allow_html=True)
-        else:
+        else:  # This `else` block will be executed later when we have the bot's response
             st.markdown(f'<div class="bot-message">{message["content"]}</div>', unsafe_allow_html=True)
-            # Display thumbs up and down after bot response
-            display_feedback(i)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-# Input form at the bottom
-def input_ui():
-    # Use a form to capture the input and the send icon
-    with st.form(key='input_form', clear_on_submit=True):
-        col1, col2 = st.columns([10, 1])
-        with col1:
-            prompt = st.text_input("You: ", key="user_input", placeholder="Type your message here...", label_visibility="collapsed")
-        with col2:
-            submit_button = st.form_submit_button(label="Send", use_container_width=False, help="Send message", button_type='primary')
+    # Send request to FastAPI
+    try:
+        response = requests.post("http://localhost:8080/ask", json={"query": prompt})
 
-        if submit_button and prompt:
-            # Add user message to chat history
-            st.session_state.messages.append({"role": "user", "content": prompt})
+        # Handle successful response
+        if response.status_code == 200:
+            data = response.json()
+            answer = data["formatted_data"]
 
-            # Send request to the backend API
-            try:
-                response = requests.post("http://localhost:8080/ask", json={"query": prompt})
+            # Add bot response to the current chat session
+            st.session_state.chat_sessions[-1].append({"role": "assistant", "content": answer})
 
-                # Handle successful response
-                if response.status_code == 200:
-                    data = response.json()
-                    answer = data.get("formatted_data", "Sorry, I didn't understand that.")
+            # Display the bot's response
+            st.markdown(f'<div class="bot-message">{answer}</div>', unsafe_allow_html=True)
 
-                    # Add bot response to chat history
-                    st.session_state.messages.append({"role": "assistant", "content": answer})
-                else:
-                    st.error(f"Error from API: {response.status_code} - {response.text}")
+            # ... (plotting logic remains the same)
 
-            except requests.exceptions.RequestException as e:
-                st.error(f"Error connecting to API: {e}")
+        else:
+            # Handle errors from FastAPI
+            st.error(f"Error from FastAPI: {response.status_code} - {response.text}")
 
-# Always show input at the bottom
-st.markdown('<div class="fixed-bottom-input">', unsafe_allow_html=True)
-input_ui()
-st.markdown('</div>', unsafe_allow_html=True)
+    except requests.exceptions.RequestException as e:
+        # Handle connection errors
+        st.error(f"Error connecting to FastAPI: {e}")
+
+# No need for a separate loop to display the current conversation anymore

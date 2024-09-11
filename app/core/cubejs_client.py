@@ -19,22 +19,62 @@ def load_cube_models_and_views():
         cubejs_meta = response.json()
         models = {}
         views = {}
-        #TODO Just load VIEWS dont load CUBES
+
         for cube in cubejs_meta['cubes']:
             cube_name = cube['name']
             details = {
-                "measures": [{"name": measure['name'], "type": measure['type']} for measure in cube['measures']],
-                "dimensions": [{"name": dimension['name'], "type": dimension['type']} for dimension in
-                               cube['dimensions']],
-                "timeDimensions": [dimension['name'] for dimension in cube['dimensions'] if dimension['type'] == 'time']
+                "measures": [],
+                "dimensions": [],
+                "timeDimensions": []
             }
+
+            # Process measures
+            for measure in cube['measures']:
+                measure_info = {
+                    "name": measure['name'],
+                    "title": measure.get('title'),
+                    "description": measure.get('description'),
+                    "shortTitle": measure.get('shortTitle'),
+                    "type": measure.get('type'),
+                    "aggType": measure.get('aggType')
+                }
+                details["measures"].append(measure_info)
+
+            # Process dimensions
+            for dimension in cube['dimensions']:
+                dimension_info = {
+                    "name": dimension['name'],
+                    "title": dimension.get('title'),
+                    "description": dimension.get('description'),
+                    "shortTitle": dimension.get('shortTitle'),
+                    "type": dimension.get('type')
+                }
+
+                # Check if the dimension has metadata (possible values, synonyms, etc.)
+                if 'meta' in dimension:
+                    dimension_info['meta'] = dimension['meta']
+
+                    # Extract possible values and synonyms if available in meta
+                    if 'possibleValues' in dimension['meta']:
+                        dimension_info['possibleValues'] = dimension['meta']['possibleValues']
+
+                    if 'synonyms' in dimension['meta']:
+                        dimension_info['synonyms'] = dimension['meta']['synonyms']
+
+                details["dimensions"].append(dimension_info)
+
+            # Add time dimensions separately if type is 'time'
+            details["timeDimensions"] = [dimension['name'] for dimension in cube['dimensions'] if dimension['type'] == 'time']
+
+            # Separate views and models
             if cube_name.endswith("_view"):
                 views[cube_name] = details
             else:
                 models[cube_name] = details
 
-        logger.info("Cube.js models and views loaded successfully.")
+        logger.info("Cube.js models and views loaded successfully with titles, descriptions, and sample values.")
         return models, views
+
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to load Cube.js models and views: {str(e)}")
         return None, None
