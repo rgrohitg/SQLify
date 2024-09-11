@@ -1,0 +1,57 @@
+cubes:
+  - name: Products
+    sql: "SELECT * FROM products"
+    title: "Products Cube"
+    description: "This cube contains data about the products available in the e-commerce store."
+
+    measures:
+      - name: productCount
+        sql: "id"
+        type: count
+        description: "The total number of products."
+
+      - name: totalStockValue
+        sql: "{CUBE}.price * {CUBE}.stock_quantity"
+        type: sum
+        description: "The total stock value calculated by multiplying the price by the stock quantity of each product."
+
+      - name: averageProductPrice
+        sql: "price"
+        type: avg
+        description: "The average price of all products."
+      
+      - name: productPrice
+        sql: "price"
+        type: sum
+        description: "The price of the product."
+
+     
+    dimensions:
+      - name: productId
+        sql: "id"
+        type: number
+        primary_key: true
+        description: "The unique identifier for each product."
+
+      - name: productName
+        sql: "name"
+        type: string
+        description: "The name of the product."
+
+      - name: productCategory
+        sql: "category"
+        type: string
+        description: "The category to which the product belongs."
+        meta:
+          possibleValues: ['Cameras', 'Electronics', 'Gaming', 'Home Automation','Wearables','Accessories']
+          synonyms: ['camera': 'Cameras','game': 'Gaming','electronic': 'Electronics','Home': 'Home Automation']
+
+      - name: productCreatedAt
+        sql: "created_at"
+        type: time
+        description: "The date and time when the product was added to the store."
+      
+      - name: stockQuantity
+        sql: "stock_quantity"
+        type: number
+        description: "The number of units available in stock for the product."
