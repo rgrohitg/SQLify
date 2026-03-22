@@ -23,6 +23,7 @@
     --muted: #5a7190;
     --muted2: #3d5470;
     --glow: 0 0 20px rgba(0,212,255,0.15);
+    --modal-bg: rgba(4, 7, 12, 0.9);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -91,6 +92,32 @@
   }
 
   .logo-text span { color: var(--accent); }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .config-trigger {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono';
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+
+  .config-trigger:hover {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.05);
+  }
 
   .status-pill {
     display: flex;
@@ -199,13 +226,57 @@
   /* MAIN LAYOUT */
   .main-grid {
     display: grid;
-    grid-template-columns: 380px 1fr;
+    grid-template-columns: 1fr;
     gap: 20px;
   }
 
-  @media (max-width: 1000px) {
-    .main-grid { grid-template-columns: 1fr; }
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--modal-bg);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
   }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal-container {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 2px var(--accent);
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 10;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  .modal-body { padding: 24px; }
 
   /* PANELS */
   .panel {
@@ -233,9 +304,7 @@
     color: var(--muted);
   }
 
-  .panel-body { padding: 18px; }
-
-  /* LEFT PANEL — CONFIG */
+  /* INPUTS */
   .section-label {
     font-size: 10px;
     letter-spacing: 1.5px;
@@ -280,8 +349,6 @@
     font-size: 12px;
     width: 100%;
   }
-
-  .input-row input::placeholder { color: var(--muted2); }
 
   .tag-row {
     display: flex;
@@ -341,15 +408,7 @@
     box-shadow: 0 8px 24px rgba(0,212,255,0.25);
   }
 
-  .cta-btn.secondary {
-    background: transparent;
-    border: 1px solid var(--border2);
-    color: var(--muted);
-  }
-
-  .cta-btn.secondary:hover { border-color: var(--accent2); color: var(--accent); }
-
-  /* RIGHT PANEL — AGENT VIEW */
+  /* WORKSPACE */
   .agent-tabs {
     display: flex;
     gap: 2px;
@@ -359,7 +418,7 @@
   }
 
   .agent-tab {
-    padding: 12px 14px;
+    padding: 12px 24px;
     font-size: 11px;
     color: var(--muted);
     cursor: pointer;
@@ -377,7 +436,7 @@
   /* DISCOVERY VIEW */
   .discovery-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 14px;
     padding: 18px;
   }
@@ -428,9 +487,7 @@
     transition: color 0.15s;
   }
 
-  .tree-item:last-child { border-bottom: none; }
   .tree-item:hover { color: var(--text); }
-  .tree-icon { font-size: 12px; }
   .tree-name { flex: 1; }
   .tree-meta { font-size: 10px; color: var(--muted2); }
 
@@ -448,7 +505,7 @@
 
   /* DAG DEPENDENCY VIEW */
   .dag-canvas {
-    padding: 18px;
+    padding: 24px;
     overflow-x: auto;
   }
 
@@ -456,15 +513,15 @@
     display: flex;
     align-items: flex-start;
     gap: 0;
-    min-width: 700px;
+    min-width: 900px;
   }
 
   .dag-stage {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     flex-shrink: 0;
-    width: 160px;
+    width: 200px;
   }
 
   .dag-stage-label {
@@ -473,13 +530,13 @@
     letter-spacing: 1.5px;
     color: var(--muted2);
     text-align: center;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
   }
 
   .dag-node {
     border: 1px solid var(--border2);
     border-radius: 8px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     background: var(--surface2);
     font-size: 11px;
     cursor: pointer;
@@ -488,7 +545,6 @@
   }
 
   .dag-node:hover { border-color: var(--accent2); }
-
   .dag-node.source { border-left: 3px solid var(--amber); }
   .dag-node.ingest { border-left: 3px solid var(--accent); }
   .dag-node.enrich { border-left: 3px solid var(--green); }
@@ -499,8 +555,8 @@
 
   .dag-node-status {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 10px;
+    right: 10px;
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -509,131 +565,27 @@
   .dag-node-status.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
   .dag-node-status.run { background: var(--amber); animation: pulse 1s infinite; }
   .dag-node-status.idle { background: var(--muted2); }
-  .dag-node-status.err { background: var(--red); }
 
   .dag-connector {
     display: flex;
     align-items: center;
-    padding: 0 8px;
-    margin-top: 30px;
+    padding: 0 12px;
+    margin-top: 35px;
     flex-shrink: 0;
   }
 
   .dag-line {
     height: 1px;
     background: linear-gradient(90deg, var(--border2), var(--accent2), var(--border2));
-    width: 40px;
+    width: 50px;
   }
 
-  .dag-arrow-head {
-    color: var(--accent2);
-    font-size: 12px;
-    margin-left: -4px;
-  }
-
-  /* ENV CLONE VIEW */
-  .clone-grid {
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .clone-compare {
-    display: grid;
-    grid-template-columns: 1fr 40px 1fr;
-    gap: 0;
-    align-items: center;
-  }
-
-  .env-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-  }
-
-  .env-box-label {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--muted2);
-    margin-bottom: 8px;
-  }
-
-  .env-box.prod { border-top: 2px solid var(--amber); }
-  .env-box.test { border-top: 2px solid var(--green); }
-
-  .env-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 0;
-    font-size: 11px;
-    color: var(--muted);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .env-row:last-child { border-bottom: none; }
-
-  .clone-arrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    font-size: 18px;
-  }
-
-  .progress-section { padding: 0 18px 18px; }
-
-  .progress-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .progress-item:last-child { border-bottom: none; }
-
-  .progress-status {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    flex-shrink: 0;
-  }
-
-  .progress-status.done { background: rgba(0,229,160,0.15); color: var(--green); }
-  .progress-status.run { background: rgba(255,179,0,0.15); color: var(--amber); animation: pulse 1s infinite; }
-  .progress-status.wait { background: rgba(90,113,144,0.15); color: var(--muted2); }
-
-  .progress-info { flex: 1; }
-  .progress-label { font-size: 12px; color: var(--text); margin-bottom: 2px; }
-  .progress-sub { font-size: 10px; color: var(--muted2); }
-
-  .progress-bar-wrap {
-    width: 80px;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--green), var(--accent));
-    transition: width 0.5s;
-  }
+  .dag-arrow-head { color: var(--accent2); font-size: 12px; margin-left: -4px; }
 
   /* RESULTS VIEW */
   .results-header {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 10px;
     padding: 18px;
   }
@@ -642,13 +594,13 @@
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 14px;
+    padding: 20px;
     text-align: center;
   }
 
   .metric-value {
     font-family: 'Syne', sans-serif;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 800;
     margin-bottom: 4px;
   }
@@ -665,7 +617,7 @@
 
   .tbl th {
     text-align: left;
-    padding: 8px 10px;
+    padding: 12px 10px;
     color: var(--muted2);
     font-size: 10px;
     text-transform: uppercase;
@@ -675,37 +627,14 @@
   }
 
   .tbl td {
-    padding: 9px 10px;
+    padding: 12px 10px;
     border-bottom: 1px solid var(--border);
     color: var(--muted);
   }
 
-  .tbl tr:last-child td { border-bottom: none; }
-  .tbl tr:hover td { background: rgba(255,255,255,0.015); color: var(--text); }
-
-  .result-pass {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--green);
-    font-size: 11px;
-  }
-
-  .result-fail {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--red);
-    font-size: 11px;
-  }
-
-  .result-warn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--amber);
-    font-size: 11px;
-  }
+  .result-pass { color: var(--green); }
+  .result-fail { color: var(--red); }
+  .result-warn { color: var(--amber); }
 
   /* LOG TERMINAL */
   .log-terminal {
@@ -728,8 +657,8 @@
   .log-dot { width: 10px; height: 10px; border-radius: 50%; }
 
   .log-body {
-    padding: 12px 16px;
-    height: 200px;
+    padding: 16px;
+    height: 250px;
     overflow-y: auto;
     font-size: 11px;
     line-height: 1.7;
@@ -739,67 +668,9 @@
   .log-time { color: var(--muted2); flex-shrink: 0; }
   .log-level-info { color: var(--accent); }
   .log-level-ok { color: var(--green); }
-  .log-level-warn { color: var(--amber); }
-  .log-level-err { color: var(--red); }
   .log-msg { color: var(--muted); }
 
-  /* ARCHITECTURE OVERVIEW */
-  .arch-view {
-    padding: 18px;
-  }
-
-  .arch-row {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    margin-bottom: 8px;
-  }
-
-  .arch-node {
-    flex: 1;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    text-align: center;
-    position: relative;
-  }
-
-  .arch-node.highlight-blue { border-color: var(--accent2); background: rgba(0,212,255,0.04); }
-  .arch-node.highlight-green { border-color: var(--green2); background: rgba(0,229,160,0.04); }
-  .arch-node.highlight-amber { border-color: var(--amber); background: rgba(255,179,0,0.04); }
-  .arch-node.highlight-purple { border-color: var(--purple); background: rgba(168,85,247,0.04); }
-
-  .arch-node-icon { font-size: 20px; margin-bottom: 6px; }
-  .arch-node-name { font-size: 12px; font-weight: 700; font-family: 'Syne', sans-serif; }
-  .arch-node-sub { font-size: 10px; color: var(--muted2); margin-top: 2px; }
-
-  .arch-arrow {
-    padding: 0 8px;
-    color: var(--muted2);
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-  /* Spinner */
-  .spin {
-    display: inline-block;
-    animation: spinAnim 0.8s linear infinite;
-  }
-
-  @keyframes spinAnim {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  /* tooltips */
-  [title] { cursor: help; }
-
+  /* COMMON COMPONENTS */
   .badge {
     display: inline-flex;
     align-items: center;
@@ -812,41 +683,81 @@
   .badge.blue { background: rgba(0,212,255,0.12); color: var(--accent); }
   .badge.green { background: rgba(0,229,160,0.12); color: var(--green); }
   .badge.amber { background: rgba(255,179,0,0.12); color: var(--amber); }
-  .badge.red { background: rgba(255,71,87,0.12); color: var(--red); }
 
   .checkbox-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 0;
+    padding: 8px 0;
     font-size: 12px;
     color: var(--muted);
     cursor: pointer;
   }
 
   .checkbox-row input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+
+  .spin {
+    display: inline-block;
+    animation: spinAnim 0.8s linear infinite;
+  }
+
+  @keyframes spinAnim {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .progress-section { padding: 0 18px 18px; }
+  .progress-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .progress-status { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+  .progress-status.done { background: rgba(0,229,160,0.15); color: var(--green); }
+  .progress-status.run { background: rgba(255,179,0,0.15); color: var(--amber); }
+  .progress-status.wait { background: rgba(90,113,144,0.15); color: var(--muted2); }
+  .progress-info { flex: 1; }
+  .progress-label { font-size: 12px; color: var(--text); margin-bottom: 2px; }
+  .progress-sub { font-size: 10px; color: var(--muted2); }
+  .progress-bar-wrap { width: 100px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--green), var(--accent)); transition: width 0.5s; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
 </style>
 </head>
 <body>
-<div class="wrap">
 
+<div class="wrap">
   <!-- HEADER -->
   <header>
     <div class="logo">
       <div class="logo-icon">⚡</div>
       <div class="logo-text">Batch<span>Probe</span></div>
     </div>
-    <div style="font-size:11px; color:var(--muted); letter-spacing:0.5px;">REGRESSION TESTING AGENT</div>
-    <div class="status-pill">
-      <div class="status-dot"></div>
-      AGENT READY
+    <div class="header-actions">
+      <div style="font-size:11px; color:var(--muted); text-align: right;">
+        <div style="color:var(--text); font-weight:700;">REGRESSION AGENT</div>
+        <div>v2.4.1 · PRODUCTION MIRROR</div>
+      </div>
+      <button class="config-trigger" onclick="toggleModal(true)">
+        ⚙ Configure
+      </button>
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        AGENT READY
+      </div>
     </div>
   </header>
 
   <!-- PHASE PIPELINE -->
   <div class="pipeline-nav">
     <div class="phase-step">
-      <button class="phase-btn active" onclick="setPhase(0, this)">
+      <button class="phase-btn active" onclick="toggleModal(true)">
         <div class="phase-num">1</div> Configure
       </button>
     </div>
@@ -882,813 +793,243 @@
     </div>
   </div>
 
-  <!-- MAIN GRID -->
+  <!-- MAIN WORKSPACE -->
   <div class="main-grid">
+    <div class="panel" style="min-height:700px;">
+      <div class="agent-tabs">
+        <div class="agent-tab active" onclick="switchTab('discover')">🔍 Discovery</div>
+        <div class="agent-tab" onclick="switchTab('dag')">🔗 DAG Map</div>
+        <div class="agent-tab" onclick="switchTab('clone')">🧬 Env Clone</div>
+        <div class="agent-tab" onclick="switchTab('exec')">▶ Execution</div>
+        <div class="agent-tab" onclick="switchTab('results')">✅ Results</div>
+      </div>
 
-    <!-- LEFT: CONFIG PANEL -->
-    <div>
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">⚙ Agent Configuration</div>
-          <span class="badge blue">v2.4.1</span>
+      <!-- DISCOVER TAB -->
+      <div class="tab-content active" id="tab-discover">
+        <div class="discovery-grid">
+          <div class="disc-card">
+            <div class="disc-card-header">
+              <div class="disc-card-title">🧱 Databricks Tables</div>
+              <span class="count-badge blue">24 found</span>
+            </div>
+            <div class="tree-item">
+              <span class="tree-icon">📁</span>
+              <span class="tree-name">prod_catalog.gold_schema</span>
+              <div class="expand-icon">▾</div>
+            </div>
+            <div style="padding-left:14px">
+              <div class="tree-item"><span class="tree-name">customer_enriched</span><span class="tree-meta">Δ 2.1M rows</span></div>
+              <div class="tree-item"><span class="tree-name">orders_aggregated</span><span class="tree-meta">Δ 890K rows</span></div>
+              <div class="tree-item"><span class="tree-name">product_features</span><span class="tree-meta">Δ 120K rows</span></div>
+            </div>
+          </div>
+
+          <div class="disc-card">
+            <div class="disc-card-header">
+              <div class="disc-card-title">✈ Airflow DAGs</div>
+              <span class="count-badge amber">8 dags</span>
+            </div>
+            <div class="tree-item"><span class="tree-name">batch_ingest_dag</span><span class="badge amber">SCHED</span></div>
+            <div class="tree-item"><span class="tree-name">enrichment_dag</span><span class="badge green">OK</span></div>
+            <div class="tree-item"><span class="tree-name">data_quality_dag</span><span class="badge green">OK</span></div>
+          </div>
+
+          <div class="disc-card">
+            <div class="disc-card-header">
+              <div class="disc-card-title">🪣 S3 Paths</div>
+              <span class="count-badge green">6 paths</span>
+            </div>
+            <div class="tree-item"><span class="tree-name">s3://…/prod/raw/events/</span><span class="tree-meta">88 GB</span></div>
+            <div class="tree-item"><span class="tree-name">s3://…/prod/processed/</span><span class="tree-meta">342 GB</span></div>
+          </div>
+
+          <div class="disc-card">
+            <div class="disc-card-header">
+              <div class="disc-card-title">⚙ Databricks Jobs</div>
+              <span class="count-badge purple">11 jobs</span>
+            </div>
+            <div class="tree-item"><span class="tree-name">ingest_raw_events</span><span class="badge amber">spark</span></div>
+            <div class="tree-item"><span class="tree-name">customer_enrichment</span><span class="badge amber">spark</span></div>
+            <div class="tree-item"><span class="tree-name">dq_checks_suite</span><span class="badge blue">python</span></div>
+          </div>
         </div>
-        <div class="panel-body">
 
-          <div class="section-label">Databricks Connection</div>
-          <div class="input-group">
-            <div class="input-row">
-              <span class="input-icon">🏠</span>
-              <input type="text" placeholder="workspace.azuredatabricks.net" value="myteam.azuredatabricks.net" />
-            </div>
-            <div class="input-row">
-              <span class="input-icon">🔑</span>
-              <input type="password" placeholder="Personal Access Token" value="dapi_••••••••••••••••" />
-            </div>
-            <div class="input-row">
-              <span class="input-icon">📦</span>
-              <input type="text" placeholder="catalog.schema (e.g. prod.gold)" value="prod_catalog.gold_schema" />
-            </div>
+        <div class="log-terminal">
+          <div class="log-header">
+            <div class="log-dot" style="background:#ff5f57"></div>
+            <div class="log-dot" style="background:#ffbd2e"></div>
+            <div class="log-dot" style="background:#28ca41"></div>
+            <span style="font-size:11px; color:var(--muted2); margin-left:8px;">agent.log — discovery</span>
           </div>
-          <div class="tag-row">
-            <span class="tag db">🧱 prod_catalog</span>
-            <span class="tag db">📊 gold_schema</span>
-            <span class="tag db">🥈 silver_schema</span>
+          <div class="log-body" id="discovery-log">
+            <div class="log-line"><span class="log-time">09:14:01</span><span class="log-level-info">[INFO]</span><span class="log-msg">Agent initializing — connecting to Databricks workspace...</span></div>
+            <div class="log-line"><span class="log-time">09:14:02</span><span class="log-level-ok">[OK]</span><span class="log-msg">Databricks REST API authenticated (token verified)</span></div>
+            <div class="log-line"><span class="log-time">09:14:04</span><span class="log-level-ok">[OK]</span><span class="log-msg">gold_schema: 13 tables discovered, lineage captured</span></div>
+            <div class="log-line"><span class="log-time">09:14:07</span><span class="log-level-ok">[OK]</span><span class="log-msg">8 Airflow DAGs retrieved — parsing task dependencies...</span></div>
+            <div class="log-line"><span class="log-time">09:14:10</span><span class="log-level-ok">[OK]</span><span class="log-msg">Discovery complete. Ready for environment cloning.</span></div>
           </div>
+        </div>
+      </div>
 
-          <div class="divider"></div>
-
-          <div class="section-label">Airflow / DAG Scheduler</div>
-          <div class="input-group">
-            <div class="input-row">
-              <span class="input-icon">🌐</span>
-              <input type="text" placeholder="Airflow base URL" value="https://airflow.internal.myteam.io" />
+      <!-- DAG TAB -->
+      <div class="tab-content" id="tab-dag">
+        <div class="dag-canvas">
+          <div style="padding:0 0 14px; font-size:11px; color:var(--muted2);">Resolved dependency graph — full lineage traversal complete</div>
+          <div class="dag-flow">
+            <div class="dag-stage">
+              <div class="dag-stage-label">① Source</div>
+              <div class="dag-node source"><div class="dag-node-name">s3_download</div><div class="dag-node-meta">s3_download_dag</div><div class="dag-node-status ok" id="node-s3"></div></div>
+              <div class="dag-node source"><div class="dag-node-name">api_fetch</div><div class="dag-node-meta">batch_ingest_dag</div><div class="dag-node-status ok"></div></div>
             </div>
-            <div class="input-row">
-              <span class="input-icon">👤</span>
-              <input type="text" placeholder="Username" value="qa_agent_svc" />
+            <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
+            <div class="dag-stage">
+              <div class="dag-stage-label">② Ingest</div>
+              <div class="dag-node ingest"><div class="dag-node-name">ingest_raw_events</div><div class="dag-node-meta">batch_ingest_dag</div><div class="dag-node-status ok"></div></div>
+              <div class="dag-node ingest"><div class="dag-node-name">ingest_users</div><div class="dag-node-meta">batch_ingest_dag</div><div class="dag-node-status ok"></div></div>
             </div>
-            <div class="input-row">
-              <span class="input-icon">🔒</span>
-              <input type="password" placeholder="API key / token" value="••••••••••••••••" />
+            <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
+            <div class="dag-stage">
+              <div class="dag-stage-label">③ Enrich</div>
+              <div class="dag-node enrich"><div class="dag-node-name">customer_enrichment</div><div class="dag-node-meta">enrichment_dag</div><div class="dag-node-status idle" id="node-enrich"></div></div>
+              <div class="dag-node enrich"><div class="dag-node-name">order_aggregation</div><div class="dag-node-meta">enrichment_dag</div><div class="dag-node-status idle"></div></div>
             </div>
-          </div>
-          <div class="tag-row">
-            <span class="tag af">✈ batch_ingest_dag</span>
-            <span class="tag af">✈ enrichment_dag</span>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="section-label">S3 / Storage</div>
-          <div class="input-group">
-            <div class="input-row">
-              <span class="input-icon">🪣</span>
-              <input type="text" placeholder="S3 bucket path" value="s3://company-data-lake/prod/" />
+            <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
+            <div class="dag-stage">
+              <div class="dag-stage-label">④ Validate</div>
+              <div class="dag-node validate"><div class="dag-node-name">dq_checks_suite</div><div class="dag-node-meta">data_quality_dag</div><div class="dag-node-status idle" id="node-dq"></div></div>
             </div>
           </div>
-          <div class="tag-row">
-            <span class="tag s3">📂 /raw/</span>
-            <span class="tag s3">📂 /processed/</span>
+        </div>
+      </div>
+
+      <!-- CLONE TAB -->
+      <div class="tab-content" id="tab-clone">
+        <div class="progress-section" style="padding-top:24px">
+          <div class="progress-item">
+            <div class="progress-status done" id="clone-step-1-icon">✓</div>
+            <div class="progress-info"><div class="progress-label">Create regression schema</div><div class="progress-sub">qa_catalog.regression_schema — DDL applied</div></div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="clone-step-1-bar" style="width:100%"></div></div>
           </div>
-
-          <div class="divider"></div>
-
-          <div class="section-label">Test Environment Target</div>
-          <div class="input-group">
-            <div class="input-row">
-              <span class="input-icon">🧪</span>
-              <input type="text" placeholder="Target schema name" value="qa_regression_schema" />
-            </div>
+          <div class="progress-item">
+            <div class="progress-status done" id="clone-step-2-icon">✓</div>
+            <div class="progress-info"><div class="progress-label">Shallow-copy gold tables (13)</div><div class="progress-sub">CREATE TABLE AS SELECT with LIMIT 0 + S3 pointer</div></div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="clone-step-2-bar" style="width:100%"></div></div>
           </div>
-          <div class="tag-row">
-            <span class="tag env">🔬 regression_env</span>
-            <span class="tag env">🏷 sprint-42</span>
+          <div class="progress-item">
+            <div class="progress-status wait" id="clone-step-3-icon">○</div>
+            <div class="progress-info"><div class="progress-label">Shallow-copy silver tables (11)</div><div class="progress-sub" id="clone-step-3-sub">Pending raw_events_clean...</div></div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="clone-step-3-bar" style="width:0%"></div></div>
           </div>
+        </div>
+      </div>
 
-          <div class="divider"></div>
+      <!-- EXEC TAB -->
+      <div class="tab-content" id="tab-exec">
+        <div class="progress-section" style="padding-top:24px">
+          <div class="progress-item">
+            <div class="progress-status wait" id="exec-step-1-icon">○</div>
+            <div class="progress-info"><div class="progress-label">① s3_download_dag.fetch_raw_files</div><div class="progress-sub" id="exec-step-1-sub">Queued...</div></div>
+            <span class="badge blue" id="exec-step-1-badge">QUEUED</span>
+          </div>
+          <div class="progress-item">
+            <div class="progress-status wait" id="exec-step-2-icon">○</div>
+            <div class="progress-info"><div class="progress-label">② batch_ingest_dag.ingest_raw_events</div><div class="progress-sub" id="exec-step-2-sub">Waiting for source download...</div></div>
+            <span class="badge blue" id="exec-step-2-badge">QUEUED</span>
+          </div>
+          <div class="progress-item">
+            <div class="progress-status wait" id="exec-step-3-icon">○</div>
+            <div class="progress-info"><div class="progress-label">④ enrichment_dag.customer_enrichment</div><div class="progress-sub" id="exec-step-3-sub">Waiting for ingestion...</div></div>
+            <span class="badge blue" id="exec-step-3-badge">QUEUED</span>
+          </div>
+        </div>
+      </div>
 
-          <div class="section-label">Agent Options</div>
-          <label class="checkbox-row">
-            <input type="checkbox" checked /> Deep-crawl table lineage
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" checked /> Auto-resolve DAG dependencies
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" checked /> Shallow-copy tables (S3 pointer)
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" /> Run full data validation (slow)
-          </label>
-          <label class="checkbox-row">
-            <input type="checkbox" checked /> Schema drift detection
-          </label>
-
-          <div class="divider"></div>
-
-          <button class="cta-btn primary" onclick="startAgent()">
-            ⚡ Launch Agent
-          </button>
-          <button class="cta-btn secondary" onclick="switchTab('arch')">
-            📐 View Architecture
-          </button>
+      <!-- RESULTS TAB -->
+      <div class="tab-content" id="tab-results">
+        <div class="results-header" id="results-summary" style="opacity: 0.3">
+          <div class="metric-card"><div class="metric-value" style="color:var(--green)">31</div><div class="metric-label">Tests Passed</div></div>
+          <div class="metric-card"><div class="metric-value" style="color:var(--red)">2</div><div class="metric-label">Tests Failed</div></div>
+          <div class="metric-card"><div class="metric-value" style="color:var(--accent)">94%</div><div class="metric-label">Pass Rate</div></div>
+        </div>
+        <div class="results-table">
+          <div id="results-loader" style="text-align: center; padding: 40px; color: var(--muted2);">Waiting for validation suite to complete...</div>
+          <table class="tbl" id="results-table" style="display: none;">
+            <thead>
+              <tr><th>Check</th><th>Table</th><th>Actual</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Row count match</td><td>customer_enriched</td><td>2,100,441</td><td><span class="result-pass">✓ PASS</span></td></tr>
+              <tr><td>Null check: customer_id</td><td>customer_enriched</td><td>0 nulls</td><td><span class="result-pass">✓ PASS</span></td></tr>
+              <tr><td>Value range: discount_pct</td><td>orders_aggregated</td><td>0–1.42</td><td><span class="result-fail">✗ FAIL (Expected 0–1.0)</span></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- RIGHT: AGENT WORKSPACE -->
-    <div>
-      <div class="panel" style="min-height:600px;">
-        <div class="agent-tabs">
-          <div class="agent-tab active" onclick="switchTab('discover')">🔍 Discovery</div>
-          <div class="agent-tab" onclick="switchTab('dag')">🔗 DAG Map</div>
-          <div class="agent-tab" onclick="switchTab('clone')">🧬 Env Clone</div>
-          <div class="agent-tab" onclick="switchTab('exec')">▶ Execution</div>
-          <div class="agent-tab" onclick="switchTab('results')">✅ Results</div>
-          <div class="agent-tab" onclick="switchTab('arch')">📐 Architecture</div>
-        </div>
+<!-- CONFIG MODAL -->
+<div class="modal-overlay" id="config-modal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <div class="panel-title">Agent Configuration</div>
+      <button class="modal-close" onclick="toggleModal(false)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">Databricks Connection</div>
+      <div class="input-group">
+        <div class="input-row"><span class="input-icon">🏠</span><input type="text" value="myteam.azuredatabricks.net" /></div>
+        <div class="input-row"><span class="input-icon">🔑</span><input type="password" value="dapi_••••••••••••••••" /></div>
+        <div class="input-row"><span class="input-icon">📦</span><input type="text" value="prod_catalog.gold_schema" /></div>
+      </div>
+      <div class="tag-row">
+        <span class="tag db">🧱 prod_catalog</span>
+        <span class="tag db">📊 gold_schema</span>
+      </div>
 
-        <!-- DISCOVER TAB -->
-        <div class="tab-content active" id="tab-discover">
-          <div class="discovery-grid">
-            <!-- Databricks Tables -->
-            <div class="disc-card">
-              <div class="disc-card-header">
-                <div class="disc-card-title">🧱 Databricks Tables</div>
-                <span class="count-badge blue">24 found</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">📁</span>
-                <span class="tree-name">prod_catalog.gold_schema</span>
-                <div class="expand-icon">▾</div>
-              </div>
-              <div style="padding-left:14px">
-                <div class="tree-item">
-                  <span class="tree-icon">📋</span>
-                  <span class="tree-name">customer_enriched</span>
-                  <span class="tree-meta">Δ 2.1M rows</span>
-                </div>
-                <div class="tree-item">
-                  <span class="tree-icon">📋</span>
-                  <span class="tree-name">orders_aggregated</span>
-                  <span class="tree-meta">Δ 890K rows</span>
-                </div>
-                <div class="tree-item">
-                  <span class="tree-icon">📋</span>
-                  <span class="tree-name">product_features</span>
-                  <span class="tree-meta">Δ 120K rows</span>
-                </div>
-              </div>
-              <div class="tree-item" style="margin-top:6px">
-                <span class="tree-icon">📁</span>
-                <span class="tree-name">prod_catalog.silver_schema</span>
-                <div class="expand-icon">▸</div>
-              </div>
-              <div style="padding-left:14px">
-                <div class="tree-item">
-                  <span class="tree-icon">📋</span>
-                  <span class="tree-name">raw_events_clean</span>
-                  <span class="tree-meta">Δ 45M rows</span>
-                </div>
-                <div class="tree-item">
-                  <span class="tree-icon">📋</span>
-                  <span class="tree-name">user_profiles</span>
-                  <span class="tree-meta">Δ 3.4M rows</span>
-                </div>
-              </div>
-            </div>
+      <div class="divider"></div>
 
-            <!-- Airflow DAGs -->
-            <div class="disc-card">
-              <div class="disc-card-header">
-                <div class="disc-card-title">✈ Airflow DAGs</div>
-                <span class="count-badge amber">8 dags</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔄</span>
-                <span class="tree-name">batch_ingest_dag</span>
-                <span class="badge amber">SCHED</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔄</span>
-                <span class="tree-name">enrichment_dag</span>
-                <span class="badge green">OK</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔄</span>
-                <span class="tree-name">data_quality_dag</span>
-                <span class="badge green">OK</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔄</span>
-                <span class="tree-name">s3_download_dag</span>
-                <span class="badge green">OK</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔄</span>
-                <span class="tree-name">feature_compute_dag</span>
-                <span class="badge blue">IDLE</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔄</span>
-                <span class="tree-name">archive_cleanup_dag</span>
-                <span class="badge blue">IDLE</span>
-              </div>
-            </div>
+      <div class="section-label">Airflow / DAG Scheduler</div>
+      <div class="input-group">
+        <div class="input-row"><span class="input-icon">🌐</span><input type="text" value="https://airflow.internal.myteam.io" /></div>
+        <div class="input-row"><span class="input-icon">🔒</span><input type="password" value="••••••••••••••••" /></div>
+      </div>
+      <div class="tag-row">
+        <span class="tag af">✈ batch_ingest_dag</span>
+        <span class="tag af">✈ enrichment_dag</span>
+      </div>
 
-            <!-- S3 Buckets -->
-            <div class="disc-card">
-              <div class="disc-card-header">
-                <div class="disc-card-title">🪣 S3 Paths</div>
-                <span class="count-badge green">6 paths</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">📂</span>
-                <span class="tree-name">s3://…/prod/raw/events/</span>
-                <span class="tree-meta">88 GB</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">📂</span>
-                <span class="tree-name">s3://…/prod/raw/users/</span>
-                <span class="tree-meta">12 GB</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">📂</span>
-                <span class="tree-name">s3://…/prod/processed/</span>
-                <span class="tree-meta">342 GB</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">📂</span>
-                <span class="tree-name">s3://…/prod/checkpoints/</span>
-                <span class="tree-meta">4 GB</span>
-              </div>
-            </div>
+      <div class="divider"></div>
 
-            <!-- Jobs -->
-            <div class="disc-card">
-              <div class="disc-card-header">
-                <div class="disc-card-title">⚙ Databricks Jobs</div>
-                <span class="count-badge purple">11 jobs</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔧</span>
-                <span class="tree-name">ingest_raw_events</span>
-                <span class="badge amber">spark</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔧</span>
-                <span class="tree-name">customer_enrichment</span>
-                <span class="badge amber">spark</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔧</span>
-                <span class="tree-name">order_aggregation</span>
-                <span class="badge amber">spark</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔧</span>
-                <span class="tree-name">feature_engineering</span>
-                <span class="badge amber">spark</span>
-              </div>
-              <div class="tree-item">
-                <span class="tree-icon">🔧</span>
-                <span class="tree-name">dq_checks_suite</span>
-                <span class="badge blue">python</span>
-              </div>
-            </div>
-          </div>
+      <div class="section-label">S3 / Storage</div>
+      <div class="input-row"><span class="input-icon">🪣</span><input type="text" value="s3://company-data-lake/prod/" /></div>
 
-          <!-- Log terminal -->
-          <div class="log-terminal">
-            <div class="log-header">
-              <div class="log-dot" style="background:#ff5f57"></div>
-              <div class="log-dot" style="background:#ffbd2e"></div>
-              <div class="log-dot" style="background:#28ca41"></div>
-              <span style="font-size:11px; color:var(--muted2); margin-left:8px;">agent.log — discovery</span>
-            </div>
-            <div class="log-body" id="log-body">
-              <div class="log-line"><span class="log-time">09:14:01</span><span class="log-level-info">[INFO]</span><span class="log-msg">Agent initializing — connecting to Databricks workspace...</span></div>
-              <div class="log-line"><span class="log-time">09:14:02</span><span class="log-level-ok">[OK]</span><span class="log-msg">Databricks REST API authenticated (token verified)</span></div>
-              <div class="log-line"><span class="log-time">09:14:03</span><span class="log-level-info">[INFO]</span><span class="log-msg">Crawling catalog: prod_catalog — 2 schemas found</span></div>
-              <div class="log-line"><span class="log-time">09:14:04</span><span class="log-level-ok">[OK]</span><span class="log-msg">gold_schema: 13 tables discovered, lineage captured</span></div>
-              <div class="log-line"><span class="log-time">09:14:05</span><span class="log-level-ok">[OK]</span><span class="log-msg">silver_schema: 11 tables discovered</span></div>
-              <div class="log-line"><span class="log-time">09:14:06</span><span class="log-level-info">[INFO]</span><span class="log-msg">Connecting to Airflow API: https://airflow.internal.myteam.io</span></div>
-              <div class="log-line"><span class="log-time">09:14:07</span><span class="log-level-ok">[OK]</span><span class="log-msg">8 DAGs retrieved — parsing task dependencies...</span></div>
-              <div class="log-line"><span class="log-time">09:14:08</span><span class="log-level-ok">[OK]</span><span class="log-msg">Dependency graph built: 3 upstream, 5 downstream tasks resolved</span></div>
-              <div class="log-line"><span class="log-time">09:14:09</span><span class="log-level-info">[INFO]</span><span class="log-msg">S3 bucket scan: s3://company-data-lake/prod/ — 6 paths indexed</span></div>
-              <div class="log-line"><span class="log-time">09:14:10</span><span class="log-level-ok">[OK]</span><span class="log-msg">Discovery complete. Ready for environment cloning.</span></div>
-            </div>
-          </div>
-        </div>
+      <div class="divider"></div>
 
-        <!-- DAG TAB -->
-        <div class="tab-content" id="tab-dag">
-          <div class="dag-canvas">
-            <div style="padding:0 0 14px; font-size:11px; color:var(--muted2);">Resolved batch dependency graph — click nodes for details</div>
-            <div class="dag-flow">
-              <!-- Stage 1: Source -->
-              <div class="dag-stage">
-                <div class="dag-stage-label">① Source</div>
-                <div class="dag-node source" onclick="selectNode(this, 'S3 Download Task\ns3_download_dag · Task: fetch_raw_files\nSchedule: @daily 02:00 UTC\nUpstream: none')">
-                  <div class="dag-node-name">s3_download</div>
-                  <div class="dag-node-meta">s3_download_dag</div>
-                  <div class="dag-node-status ok"></div>
-                </div>
-                <div class="dag-node source" onclick="selectNode(this, 'API Ingest Task\nbatch_ingest_dag · Task: api_fetch\nSchedule: @daily 02:30 UTC\nUpstream: none')">
-                  <div class="dag-node-name">api_fetch</div>
-                  <div class="dag-node-meta">batch_ingest_dag</div>
-                  <div class="dag-node-status ok"></div>
-                </div>
-              </div>
+      <div class="section-label">Agent Options</div>
+      <label class="checkbox-row"><input type="checkbox" checked /> Deep-crawl table lineage</label>
+      <label class="checkbox-row"><input type="checkbox" checked /> Auto-resolve DAG dependencies</label>
+      <label class="checkbox-row"><input type="checkbox" checked /> Shallow-copy tables (S3 pointer)</label>
+      <label class="checkbox-row"><input type="checkbox" /> Schema drift detection</label>
 
-              <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
-
-              <!-- Stage 2: Ingest -->
-              <div class="dag-stage">
-                <div class="dag-stage-label">② Ingest</div>
-                <div class="dag-node ingest">
-                  <div class="dag-node-name">ingest_raw_events</div>
-                  <div class="dag-node-meta">batch_ingest_dag</div>
-                  <div class="dag-node-status ok"></div>
-                </div>
-                <div class="dag-node ingest">
-                  <div class="dag-node-name">ingest_users</div>
-                  <div class="dag-node-meta">batch_ingest_dag</div>
-                  <div class="dag-node-status ok"></div>
-                </div>
-              </div>
-
-              <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
-
-              <!-- Stage 3: Enrich -->
-              <div class="dag-stage">
-                <div class="dag-stage-label">③ Enrich</div>
-                <div class="dag-node enrich">
-                  <div class="dag-node-name">customer_enrichment</div>
-                  <div class="dag-node-meta">enrichment_dag</div>
-                  <div class="dag-node-status run"></div>
-                </div>
-                <div class="dag-node enrich">
-                  <div class="dag-node-name">order_aggregation</div>
-                  <div class="dag-node-meta">enrichment_dag</div>
-                  <div class="dag-node-status idle"></div>
-                </div>
-                <div class="dag-node enrich">
-                  <div class="dag-node-name">feature_engineering</div>
-                  <div class="dag-node-meta">enrichment_dag</div>
-                  <div class="dag-node-status idle"></div>
-                </div>
-              </div>
-
-              <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
-
-              <!-- Stage 4: Validate -->
-              <div class="dag-stage">
-                <div class="dag-stage-label">④ Validate</div>
-                <div class="dag-node validate">
-                  <div class="dag-node-name">dq_checks_suite</div>
-                  <div class="dag-node-meta">data_quality_dag</div>
-                  <div class="dag-node-status idle"></div>
-                </div>
-                <div class="dag-node validate">
-                  <div class="dag-node-name">schema_drift_check</div>
-                  <div class="dag-node-meta">data_quality_dag</div>
-                  <div class="dag-node-status idle"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Node Detail -->
-            <div id="node-detail" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px; margin-top:14px; font-size:11px; color:var(--muted);">
-              <div id="node-detail-content"></div>
-            </div>
-
-            <!-- Legend -->
-            <div style="display:flex; gap:18px; margin-top:20px; font-size:10px; color:var(--muted2);">
-              <span>🟡 Source</span>
-              <span style="color:var(--accent)">🔵 Ingest</span>
-              <span style="color:var(--green)">🟢 Enrich</span>
-              <span style="color:var(--purple)">🟣 Validate</span>
-              <span style="margin-left:auto"><span style="color:var(--green)">● running</span> · <span>● idle</span></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- CLONE TAB -->
-        <div class="tab-content" id="tab-clone">
-          <div class="clone-grid">
-            <div style="font-size:11px; color:var(--muted2); margin-bottom:6px;">Shallow-copying prod tables → regression schema. S3 paths are <em>referenced</em>, not copied.</div>
-            <div class="clone-compare">
-              <div class="env-box prod">
-                <div class="env-box-label">🏭 Production</div>
-                <div class="env-row"><span>📦</span> prod_catalog.gold_schema</div>
-                <div class="env-row"><span>📦</span> prod_catalog.silver_schema</div>
-                <div class="env-row"><span>🪣</span> s3://…/prod/raw/ <span class="badge amber" style="margin-left:auto">88GB</span></div>
-                <div class="env-row"><span>⚙</span> enrichment_dag (live)</div>
-              </div>
-              <div class="clone-arrow">⟹</div>
-              <div class="env-box test">
-                <div class="env-box-label">🧪 Regression (new)</div>
-                <div class="env-row"><span>📦</span> qa_catalog.regression_schema</div>
-                <div class="env-row"><span>📦</span> qa_catalog.regression_silver</div>
-                <div class="env-row"><span>🔗</span> s3://…/prod/raw/ <span class="badge green" style="margin-left:auto">ptr</span></div>
-                <div class="env-row"><span>⚙</span> enrichment_dag (cloned)</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="progress-section">
-            <div style="font-size:11px; color:var(--muted2); padding-bottom:12px; border-bottom:1px solid var(--border); margin-bottom:4px;">Cloning Progress</div>
-            <div class="progress-item">
-              <div class="progress-status done">✓</div>
-              <div class="progress-info">
-                <div class="progress-label">Create regression schema</div>
-                <div class="progress-sub">qa_catalog.regression_schema — DDL applied</div>
-              </div>
-              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:100%"></div></div>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status done">✓</div>
-              <div class="progress-info">
-                <div class="progress-label">Shallow-copy gold tables (13)</div>
-                <div class="progress-sub">CREATE TABLE AS SELECT with LIMIT 0 + S3 location pointer</div>
-              </div>
-              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:100%"></div></div>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status run">↻</div>
-              <div class="progress-info">
-                <div class="progress-label">Shallow-copy silver tables (11)</div>
-                <div class="progress-sub">8 / 11 complete — raw_events_clean pending...</div>
-              </div>
-              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:73%"></div></div>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status wait">○</div>
-              <div class="progress-info">
-                <div class="progress-label">Clone enrichment_dag config</div>
-                <div class="progress-sub">Patch table refs → regression schema</div>
-              </div>
-              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status wait">○</div>
-              <div class="progress-info">
-                <div class="progress-label">Inject test fixtures</div>
-                <div class="progress-sub">Seed regression tables from last prod snapshot</div>
-              </div>
-              <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- EXEC TAB -->
-        <div class="tab-content" id="tab-exec">
-          <div class="progress-section" style="padding-top:18px">
-            <div style="font-size:11px; color:var(--muted2); margin-bottom:14px;">Sequential job execution in regression environment — respecting DAG ordering</div>
-
-            <div class="progress-item">
-              <div class="progress-status done">✓</div>
-              <div class="progress-info">
-                <div class="progress-label">① s3_download_dag.fetch_raw_files</div>
-                <div class="progress-sub">Completed in 2m 14s · 3.2 GB downloaded</div>
-              </div>
-              <span class="badge green">PASS</span>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status done">✓</div>
-              <div class="progress-info">
-                <div class="progress-label">② batch_ingest_dag.ingest_raw_events</div>
-                <div class="progress-sub">Completed in 8m 02s · 45.2M rows ingested</div>
-              </div>
-              <span class="badge green">PASS</span>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status done">✓</div>
-              <div class="progress-info">
-                <div class="progress-label">③ batch_ingest_dag.ingest_users</div>
-                <div class="progress-sub">Completed in 1m 44s · 3.4M rows ingested</div>
-              </div>
-              <span class="badge green">PASS</span>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status run">↻</div>
-              <div class="progress-info">
-                <div class="progress-label">④ enrichment_dag.customer_enrichment</div>
-                <div class="progress-sub">Running… 4m 37s elapsed · Spark job #2214</div>
-              </div>
-              <span class="badge amber">RUNNING</span>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status wait">○</div>
-              <div class="progress-info">
-                <div class="progress-label">⑤ enrichment_dag.order_aggregation</div>
-                <div class="progress-sub">Waiting on customer_enrichment</div>
-              </div>
-              <span class="badge blue">QUEUED</span>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status wait">○</div>
-              <div class="progress-info">
-                <div class="progress-label">⑥ enrichment_dag.feature_engineering</div>
-                <div class="progress-sub">Waiting on order_aggregation</div>
-              </div>
-              <span class="badge blue">QUEUED</span>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status wait">○</div>
-              <div class="progress-info">
-                <div class="progress-label">⑦ data_quality_dag.dq_checks_suite</div>
-                <div class="progress-sub">Full suite: row counts, nulls, schema, value ranges</div>
-              </div>
-              <span class="badge blue">QUEUED</span>
-            </div>
-            <div class="progress-item">
-              <div class="progress-status wait">○</div>
-              <div class="progress-info">
-                <div class="progress-label">⑧ data_quality_dag.schema_drift_check</div>
-                <div class="progress-sub">Compare prod vs regression schema</div>
-              </div>
-              <span class="badge blue">QUEUED</span>
-            </div>
-          </div>
-
-          <div class="log-terminal" style="margin-top:0">
-            <div class="log-header">
-              <div class="log-dot" style="background:#ff5f57"></div>
-              <div class="log-dot" style="background:#ffbd2e"></div>
-              <div class="log-dot" style="background:#28ca41"></div>
-              <span style="font-size:11px; color:var(--muted2); margin-left:8px;">agent.log — execution</span>
-            </div>
-            <div class="log-body">
-              <div class="log-line"><span class="log-time">09:22:11</span><span class="log-level-info">[INFO]</span><span class="log-msg">Triggering job: s3_download_dag.fetch_raw_files (run_id: regr_20260320_001)</span></div>
-              <div class="log-line"><span class="log-time">09:24:25</span><span class="log-level-ok">[OK]</span><span class="log-msg">s3_download: SUCCEEDED · Duration: 2m14s</span></div>
-              <div class="log-line"><span class="log-time">09:24:26</span><span class="log-level-info">[INFO]</span><span class="log-msg">Triggering job: batch_ingest_dag.ingest_raw_events</span></div>
-              <div class="log-line"><span class="log-time">09:32:28</span><span class="log-level-ok">[OK]</span><span class="log-msg">ingest_raw_events: SUCCEEDED · 45.2M rows · Duration: 8m02s</span></div>
-              <div class="log-line"><span class="log-time">09:32:30</span><span class="log-level-info">[INFO]</span><span class="log-msg">Triggering job: batch_ingest_dag.ingest_users</span></div>
-              <div class="log-line"><span class="log-time">09:34:14</span><span class="log-level-ok">[OK]</span><span class="log-msg">ingest_users: SUCCEEDED · 3.4M rows · Duration: 1m44s</span></div>
-              <div class="log-line"><span class="log-time">09:34:16</span><span class="log-level-info">[INFO]</span><span class="log-msg">Triggering job: enrichment_dag.customer_enrichment (Spark job #2214)</span></div>
-              <div class="log-line"><span class="log-level-warn">[WAIT]</span><span class="log-msg"><span class="spin">◐</span> enrichment_dag.customer_enrichment running… 4m37s</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- RESULTS TAB -->
-        <div class="tab-content" id="tab-results">
-          <div class="results-header">
-            <div class="metric-card">
-              <div class="metric-value" style="color:var(--green)">31</div>
-              <div class="metric-label">Tests Passed</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value" style="color:var(--red)">2</div>
-              <div class="metric-label">Tests Failed</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value" style="color:var(--amber)">3</div>
-              <div class="metric-label">Warnings</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-value" style="color:var(--accent)">94%</div>
-              <div class="metric-label">Pass Rate</div>
-            </div>
-          </div>
-
-          <div class="results-table">
-            <table class="tbl">
-              <thead>
-                <tr>
-                  <th>Check</th>
-                  <th>Table</th>
-                  <th>Expected</th>
-                  <th>Actual</th>
-                  <th>Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Row count match</td>
-                  <td>customer_enriched</td>
-                  <td>2,100,441</td>
-                  <td>2,100,441</td>
-                  <td><span class="result-pass">✓ PASS</span></td>
-                </tr>
-                <tr>
-                  <td>Null check: customer_id</td>
-                  <td>customer_enriched</td>
-                  <td>0 nulls</td>
-                  <td>0 nulls</td>
-                  <td><span class="result-pass">✓ PASS</span></td>
-                </tr>
-                <tr>
-                  <td>Schema match</td>
-                  <td>customer_enriched</td>
-                  <td>22 cols</td>
-                  <td>22 cols</td>
-                  <td><span class="result-pass">✓ PASS</span></td>
-                </tr>
-                <tr>
-                  <td>Row count match</td>
-                  <td>orders_aggregated</td>
-                  <td>890,212</td>
-                  <td>890,340</td>
-                  <td><span class="result-warn">⚠ WARN +128</span></td>
-                </tr>
-                <tr>
-                  <td>Null check: order_value</td>
-                  <td>orders_aggregated</td>
-                  <td>0 nulls</td>
-                  <td>14 nulls</td>
-                  <td><span class="result-fail">✗ FAIL</span></td>
-                </tr>
-                <tr>
-                  <td>Schema drift</td>
-                  <td>orders_aggregated</td>
-                  <td>match</td>
-                  <td>match</td>
-                  <td><span class="result-pass">✓ PASS</span></td>
-                </tr>
-                <tr>
-                  <td>Value range: discount_pct</td>
-                  <td>orders_aggregated</td>
-                  <td>0–1.0</td>
-                  <td>0–1.42</td>
-                  <td><span class="result-fail">✗ FAIL</span></td>
-                </tr>
-                <tr>
-                  <td>Row count match</td>
-                  <td>product_features</td>
-                  <td>120,000</td>
-                  <td>120,000</td>
-                  <td><span class="result-pass">✓ PASS</span></td>
-                </tr>
-                <tr>
-                  <td>Unique key: product_id</td>
-                  <td>product_features</td>
-                  <td>unique</td>
-                  <td>unique</td>
-                  <td><span class="result-pass">✓ PASS</span></td>
-                </tr>
-                <tr>
-                  <td>Enrichment coverage</td>
-                  <td>customer_enriched</td>
-                  <td>&gt;98%</td>
-                  <td>99.2%</td>
-                  <td><span class="result-pass">✓ PASS</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- ARCHITECTURE TAB -->
-        <div class="tab-content" id="tab-arch">
-          <div class="arch-view">
-            <div style="font-size:11px; color:var(--muted2); margin-bottom:20px;">End-to-end system architecture — from input config to regression verdict</div>
-
-            <!-- Row 1: User inputs -->
-            <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">① You provide</div>
-            <div class="arch-row">
-              <div class="arch-node highlight-blue">
-                <div class="arch-node-icon">🧱</div>
-                <div class="arch-node-name">Databricks</div>
-                <div class="arch-node-sub">workspace URL + token + catalog.schema</div>
-              </div>
-              <div class="arch-arrow">+</div>
-              <div class="arch-node highlight-amber">
-                <div class="arch-node-icon">✈</div>
-                <div class="arch-node-name">Airflow</div>
-                <div class="arch-node-sub">base URL + credentials</div>
-              </div>
-              <div class="arch-arrow">+</div>
-              <div class="arch-node highlight-green">
-                <div class="arch-node-icon">🪣</div>
-                <div class="arch-node-name">S3 Bucket</div>
-                <div class="arch-node-sub">data lake path</div>
-              </div>
-              <div class="arch-arrow">+</div>
-              <div class="arch-node highlight-purple">
-                <div class="arch-node-icon">🧪</div>
-                <div class="arch-node-name">Target Schema</div>
-                <div class="arch-node-sub">regression env name</div>
-              </div>
-            </div>
-
-            <div style="text-align:center; color:var(--muted2); font-size:20px; margin:12px 0">↓</div>
-
-            <!-- Row 2: Agent Discovery -->
-            <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">② Agent crawls</div>
-            <div class="arch-row">
-              <div class="arch-node highlight-blue">
-                <div class="arch-node-icon">🔍</div>
-                <div class="arch-node-name">Table Discovery</div>
-                <div class="arch-node-sub">Databricks REST API · catalog/schema/table scan</div>
-              </div>
-              <div class="arch-arrow">+</div>
-              <div class="arch-node highlight-amber">
-                <div class="arch-node-icon">🔗</div>
-                <div class="arch-node-name">DAG Crawl</div>
-                <div class="arch-node-sub">Airflow API · DAGs, tasks, dependency graph</div>
-              </div>
-              <div class="arch-arrow">+</div>
-              <div class="arch-node highlight-green">
-                <div class="arch-node-icon">📐</div>
-                <div class="arch-node-name">Lineage Map</div>
-                <div class="arch-node-sub">Table → Job → DAG dependency resolution</div>
-              </div>
-            </div>
-
-            <div style="text-align:center; color:var(--muted2); font-size:20px; margin:12px 0">↓</div>
-
-            <!-- Row 3: Clone -->
-            <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">③ Agent clones environment</div>
-            <div class="arch-row">
-              <div class="arch-node highlight-purple">
-                <div class="arch-node-icon">🧬</div>
-                <div class="arch-node-name">Shallow Copy Tables</div>
-                <div class="arch-node-sub">CREATE TABLE … LOCATION → same S3 path, new schema</div>
-              </div>
-              <div class="arch-arrow">→</div>
-              <div class="arch-node highlight-purple">
-                <div class="arch-node-icon">⚙</div>
-                <div class="arch-node-name">Clone DAG Configs</div>
-                <div class="arch-node-sub">Patch DB refs → regression schema, keep logic</div>
-              </div>
-              <div class="arch-arrow">→</div>
-              <div class="arch-node highlight-purple">
-                <div class="arch-node-icon">🌱</div>
-                <div class="arch-node-name">Seed Fixtures</div>
-                <div class="arch-node-sub">Last prod snapshot → regression tables</div>
-              </div>
-            </div>
-
-            <div style="text-align:center; color:var(--muted2); font-size:20px; margin:12px 0">↓</div>
-
-            <!-- Row 4: Execute -->
-            <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">④ Sequential execution (respecting DAG order)</div>
-            <div class="arch-row" style="gap:4px">
-              <div class="arch-node" style="border-left:3px solid var(--amber);">
-                <div class="arch-node-icon" style="font-size:14px">⬇</div>
-                <div class="arch-node-name" style="font-size:11px">Download</div>
-              </div>
-              <div class="arch-arrow" style="padding:0 4px">→</div>
-              <div class="arch-node" style="border-left:3px solid var(--accent);">
-                <div class="arch-node-icon" style="font-size:14px">⬆</div>
-                <div class="arch-node-name" style="font-size:11px">Ingest</div>
-              </div>
-              <div class="arch-arrow" style="padding:0 4px">→</div>
-              <div class="arch-node" style="border-left:3px solid var(--green);">
-                <div class="arch-node-icon" style="font-size:14px">✨</div>
-                <div class="arch-node-name" style="font-size:11px">Enrich</div>
-              </div>
-              <div class="arch-arrow" style="padding:0 4px">→</div>
-              <div class="arch-node" style="border-left:3px solid var(--purple);">
-                <div class="arch-node-icon" style="font-size:14px">✅</div>
-                <div class="arch-node-name" style="font-size:11px">Validate</div>
-              </div>
-            </div>
-
-            <div style="text-align:center; color:var(--muted2); font-size:20px; margin:12px 0">↓</div>
-
-            <!-- Row 5: Report -->
-            <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">⑤ Regression verdict</div>
-            <div class="arch-row">
-              <div class="arch-node highlight-green">
-                <div class="arch-node-icon">📊</div>
-                <div class="arch-node-name">Results Dashboard</div>
-                <div class="arch-node-sub">Row counts · Nulls · Schema drift · Value ranges</div>
-              </div>
-              <div class="arch-arrow">+</div>
-              <div class="arch-node highlight-blue">
-                <div class="arch-node-icon">📋</div>
-                <div class="arch-node-name">Diff Report</div>
-                <div class="arch-node-sub">Prod vs Regression comparison · Failures highlighted</div>
-              </div>
-              <div class="arch-arrow">+</div>
-              <div class="arch-node highlight-amber">
-                <div class="arch-node-icon">🔔</div>
-                <div class="arch-node-name">Alert & Cleanup</div>
-                <div class="arch-node-sub">Slack/email on fail · Drop regression schema</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <div style="margin-top:24px;">
+        <button class="cta-btn primary" id="launch-btn" onclick="startAgent()">⚡ Launch Agent</button>
+        <button class="cta-btn secondary" style="border:none" onclick="toggleModal(false)">Close without changes</button>
       </div>
     </div>
-
   </div>
 </div>
 
 <script>
-  // Phase nav
-  function setPhase(idx, btn) {
-    document.querySelectorAll('.phase-btn').forEach(b => {
-      b.classList.remove('active');
-    });
-    btn.classList.add('active');
-    const tabs = ['discover','discover','dag','clone','exec','results'];
-    switchTab(tabs[idx] || 'discover');
+  // Toggle Modal
+  function toggleModal(show) {
+    const modal = document.getElementById('config-modal');
+    if (show) {
+      modal.classList.add('open');
+    } else {
+      modal.classList.remove('open');
+    }
   }
 
   // Tabs
@@ -1697,35 +1038,122 @@
     document.querySelectorAll('.agent-tab').forEach(t => t.classList.remove('active'));
     const el = document.getElementById('tab-' + name);
     if (el) el.classList.add('active');
-    const map = {discover:0, dag:1, clone:2, exec:3, results:4, arch:5};
+    const map = {discover:0, dag:1, clone:2, exec:3, results:4};
     document.querySelectorAll('.agent-tab')[map[name]]?.classList.add('active');
   }
 
-  // DAG node select
-  function selectNode(el, info) {
-    document.querySelectorAll('.dag-node').forEach(n => n.style.borderColor = '');
-    el.style.outline = '1px solid var(--accent)';
-    const d = document.getElementById('node-detail');
-    const c = document.getElementById('node-detail-content');
-    d.style.display = 'block';
-    c.innerHTML = info.split('\n').map(l => `<div>${l}</div>`).join('');
-    setTimeout(() => el.style.outline = '', 2000);
+  // Phase nav manually (if clicked)
+  function setPhase(idx, btn) {
+    document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tabs = ['discover','discover','dag','clone','exec','results'];
+    switchTab(tabs[idx] || 'discover');
   }
 
-  // Launch agent simulation
-  function startAgent() {
-    const btn = event.target;
+  // Utility to update phase buttons automatically
+  function autoPhase(idx) {
+    const btns = document.querySelectorAll('.phase-btn');
+    btns.forEach((b, i) => {
+      b.classList.remove('active');
+      if (i < idx) b.classList.add('done');
+    });
+    btns[idx].classList.add('active');
+  }
+
+  // Main Simulation Loop
+  async function startAgent() {
+    const btn = document.getElementById('launch-btn');
     btn.textContent = '⚡ Agent Launching...';
     btn.disabled = true;
+    
+    // 1. Initial Launch
+    await new Promise(r => setTimeout(r, 1000));
+    toggleModal(false);
+    btn.textContent = '⚡ Launch Agent';
+    btn.disabled = false;
+
+    // Reset UI state for new run
+    document.querySelectorAll('.phase-btn').forEach(b => {
+      b.classList.remove('done');
+      b.classList.remove('active');
+    });
+
+    // 2. DISCOVER PHASE
+    autoPhase(1);
+    switchTab('discover');
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 3. DAG ANALYSIS
+    autoPhase(2);
+    switchTab('dag');
+    document.getElementById('node-enrich').className = 'dag-node-status run';
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 4. CLONE ENV
+    autoPhase(3);
+    switchTab('clone');
+    const c3i = document.getElementById('clone-step-3-icon');
+    const c3b = document.getElementById('clone-step-3-bar');
+    const c3s = document.getElementById('clone-step-3-sub');
+    
+    c3i.className = 'progress-status run';
+    c3i.textContent = '↻';
+    
+    for(let i=0; i<=100; i+=20) {
+      c3b.style.width = i + '%';
+      c3s.textContent = `Processing tables... ${i}%`;
+      await new Promise(r => setTimeout(r, 400));
+    }
+    c3i.className = 'progress-status done';
+    c3i.textContent = '✓';
+    c3s.textContent = 'Silver tables cloned successfully.';
+
+    // 5. EXECUTE JOBS
+    autoPhase(4);
+    switchTab('exec');
+    
+    const steps = [1, 2, 3];
+    for (const s of steps) {
+      const icon = document.getElementById(`exec-step-${s}-icon`);
+      const sub = document.getElementById(`exec-step-${s}-sub`);
+      const badge = document.getElementById(`exec-step-${s}-badge`);
+      
+      icon.className = 'progress-status run';
+      icon.textContent = '↻';
+      sub.textContent = 'Running Spark job...';
+      badge.className = 'badge amber';
+      badge.textContent = 'RUNNING';
+      
+      await new Promise(r => setTimeout(r, 2000));
+      
+      icon.className = 'progress-status done';
+      icon.textContent = '✓';
+      sub.textContent = 'Completed successfully.';
+      badge.className = 'badge green';
+      badge.textContent = 'PASS';
+    }
+
+    // 6. VALIDATE RESULTS
+    autoPhase(5);
+    switchTab('results');
+    await new Promise(r => setTimeout(r, 1000));
+    document.getElementById('results-loader').style.display = 'none';
+    document.getElementById('results-table').style.display = 'table';
+    document.getElementById('results-summary').style.opacity = '1';
+    
+    // Mark final phase done
     setTimeout(() => {
-      btn.textContent = '⚡ Launch Agent';
-      btn.disabled = false;
-      switchTab('discover');
-      // Mark phase 1 done
-      document.querySelectorAll('.phase-btn')[0].classList.remove('active');
-      document.querySelectorAll('.phase-btn')[0].classList.add('done');
-      document.querySelectorAll('.phase-btn')[1].classList.add('active');
-    }, 1800);
+        document.querySelectorAll('.phase-btn')[5].classList.remove('active');
+        document.querySelectorAll('.phase-btn')[5].classList.add('done');
+    }, 1000);
+  }
+
+  // Close modal on click outside
+  window.onclick = function(event) {
+    const modal = document.getElementById('config-modal');
+    if (event.target == modal) {
+      toggleModal(false);
+    }
   }
 </script>
 </body>
