@@ -7,23 +7,21 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #080c12;
-    --surface: #0d1420;
+    --bg: #04070a;
+    --surface: #0a0f18;
     --surface2: #111827;
     --border: #1e2d42;
-    --border2: #243347;
+    --border2: #2d3e5a;
     --accent: #00d4ff;
-    --accent2: #0088cc;
+    --accent-dim: rgba(0, 212, 255, 0.1);
     --green: #00e5a0;
-    --green2: #00b87a;
     --amber: #ffb300;
     --red: #ff4757;
     --purple: #a855f7;
     --text: #e2eaf5;
-    --muted: #5a7190;
-    --muted2: #3d5470;
+    --muted: #64748b;
+    --muted2: #334155;
     --glow: 0 0 20px rgba(0,212,255,0.15);
-    --modal-bg: rgba(4, 7, 12, 0.9);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -33,1159 +31,524 @@
     color: var(--text);
     font-family: 'JetBrains Mono', monospace;
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
-  /* background grid */
+  /* Grid Background */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
+      linear-gradient(rgba(0,212,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.02) 1px, transparent 1px);
+    background-size: 50px 50px;
     pointer-events: none;
     z-index: 0;
   }
 
-  .wrap {
+  .app-container {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    height: 100vh;
     position: relative;
     z-index: 1;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0 24px 60px;
   }
 
-  /* HEADER */
-  header {
+  /* SIDEBAR: AGENT CONSOLE */
+  .agent-sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 28px 0 24px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 32px;
+    flex-direction: column;
+    padding: 24px;
+    gap: 20px;
+    overflow-y: auto;
   }
 
   .logo {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-bottom: 20px;
   }
 
   .logo-icon {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     background: linear-gradient(135deg, var(--accent), var(--green));
-    border-radius: 8px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .logo-text {
     font-family: 'Syne', sans-serif;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
-    letter-spacing: -0.5px;
   }
 
-  .logo-text span { color: var(--accent); }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .config-trigger {
+  .agent-status-card {
     background: var(--surface2);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-family: 'JetBrains Mono';
-    cursor: pointer;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .status-indicator {
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.2s;
-  }
-
-  .config-trigger:hover {
-    border-color: var(--accent);
-    background: rgba(0, 212, 255, 0.05);
-  }
-
-  .status-pill {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
-    border: 1px solid var(--border2);
-    border-radius: 100px;
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--muted);
   }
 
   .status-dot {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--muted2);
   }
 
   .status-dot.active {
     background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: pulse 2s infinite;
+    box-shadow: 0 0 10px var(--green);
+    animation: blink 2s infinite;
   }
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-  /* PHASE PIPELINE VISUALIZATION */
-  .pipeline-nav {
+  /* CHAT / THOUGHTS */
+  .thought-stream {
+    flex: 1;
     display: flex;
-    align-items: center;
-    gap: 0;
-    margin-bottom: 36px;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    padding-right: 4px;
   }
 
-  .phase-step {
+  .thought-msg {
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+    border-left: 2px solid var(--border);
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .thought-msg.agent { border-left-color: var(--accent); }
+  .thought-msg.system { color: var(--muted); border-left-color: var(--muted2); font-style: italic; }
+  .thought-msg.planning { border-left-color: var(--purple); background: rgba(168, 85, 247, 0.05); }
+
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+  .task-list {
+    margin-top: 10px;
     display: flex;
-    align-items: center;
-    flex-shrink: 0;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .phase-btn {
+  .task-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 16px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     color: var(--muted);
-    white-space: nowrap;
-    position: relative;
+    padding: 4px 0;
   }
 
-  .phase-btn:hover { border-color: var(--border2); color: var(--text); }
+  .task-item.active { color: var(--accent); }
+  .task-item.done { color: var(--green); text-decoration: line-through; opacity: 0.6; }
 
-  .phase-btn.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,212,255,0.06);
-    box-shadow: var(--glow);
-  }
-
-  .phase-btn.done {
-    border-color: var(--green2);
-    color: var(--green);
-    background: rgba(0,229,160,0.05);
-  }
-
-  .phase-num {
-    width: 22px;
-    height: 22px;
+  .task-bullet {
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     border: 1px solid currentColor;
+  }
+
+  .task-item.done .task-bullet { background: var(--green); border-color: var(--green); }
+
+  /* MAIN WORKSPACE */
+  .workspace {
+    padding: 32px;
+    overflow-y: auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 700;
-    flex-shrink: 0;
+    flex-direction: column;
+    gap: 24px;
   }
 
-  .phase-arrow {
-    padding: 0 8px;
-    color: var(--muted2);
-    font-size: 14px;
+  .workspace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 8px;
   }
 
-  /* MAIN LAYOUT */
-  .main-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .workspace-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+  }
+
+  .workspace-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
   }
 
   /* MODAL */
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background: var(--modal-bg);
+    background: rgba(0,0,0,0.8);
     backdrop-filter: blur(8px);
     z-index: 1000;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
   }
-
-  .modal-overlay.open { display: flex; }
 
   .modal-container {
     background: var(--surface);
     border: 1px solid var(--border2);
     border-radius: 16px;
     width: 100%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 2px var(--accent);
+    max-width: 500px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
   }
 
-  .modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    background: var(--surface);
-    z-index: 10;
+  .modal-body { padding: 32px; }
+
+  /* DYNAMIC CARDS */
+  .discovery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
   }
 
-  .modal-close {
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 18px;
-  }
-
-  .modal-body { padding: 24px; }
-
-  /* PANELS */
-  .panel {
+  .card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    overflow: hidden;
-    position: relative;
+    padding: 16px;
+    animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .panel-header {
+  @keyframes fadeInScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+  .card-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(255,255,255,0.015);
-  }
-
-  .panel-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  /* IDLE STATE */
-  #idle-view {
-    display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 100px 20px;
-    text-align: center;
-  }
-
-  .idle-icon {
-    font-size: 48px;
-    margin-bottom: 24px;
-    opacity: 0.5;
-    animation: floating 3s ease-in-out infinite;
-  }
-
-  @keyframes floating {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-  }
-
-  .idle-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--muted);
     margin-bottom: 12px;
   }
 
-  .idle-sub {
-    font-size: 12px;
-    color: var(--muted2);
-    max-width: 400px;
-    line-height: 1.6;
-  }
+  .card-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
 
-  /* WORKSPACE CONTENT (HIDDEN UNTIL START) */
-  #active-workspace {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.5s ease-in;
-  }
+  .count-badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; }
+  .count-badge.blue { background: var(--accent-dim); color: var(--accent); }
 
-  #active-workspace.visible {
-    display: block;
-    opacity: 1;
-  }
+  .tree-item { font-size: 11px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; }
+  .tree-item:last-child { border-bottom: none; }
+  .tree-meta { color: var(--muted); font-size: 10px; }
+
+  /* DAG */
+  .dag-view { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; }
+  .dag-stage { display: flex; flex-direction: column; gap: 10px; width: 180px; flex-shrink: 0; }
+  .dag-node { background: var(--surface2); border: 1px solid var(--border2); padding: 10px; border-radius: 8px; font-size: 11px; }
+  .dag-node.active { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-dim); }
+
+  /* PROGRESS */
+  .progress-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 12px; }
+  .p-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--surface2); font-size: 10px; }
+  .p-icon.done { background: rgba(0,229,160,0.1); color: var(--green); }
+  .p-bar { flex: 1; height: 4px; background: var(--muted2); border-radius: 2px; overflow: hidden; }
+  .p-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
 
   /* INPUTS */
-  .section-label {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--muted2);
-    margin-bottom: 8px;
-    margin-top: 18px;
-  }
-
-  .section-label:first-child { margin-top: 0; }
-
-  .input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 4px;
-  }
-
-  .input-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 8px 12px;
-    transition: border-color 0.2s;
-  }
-
-  .input-row:focus-within {
-    border-color: var(--accent2);
-  }
-
-  .input-icon { font-size: 13px; flex-shrink: 0; }
-
-  .input-row input {
-    background: none;
-    border: none;
-    outline: none;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    width: 100%;
-  }
-
-  .tag-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .tag {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    border-radius: 5px;
-    font-size: 11px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: all 0.15s;
-  }
-
-  .tag.db { background: rgba(255,76,0,0.12); color: #ff6b35; border-color: rgba(255,76,0,0.2); }
-  .tag.af { background: rgba(0,178,255,0.1); color: #00b2ff; border-color: rgba(0,178,255,0.2); }
-  .tag.s3 { background: rgba(255,153,0,0.1); color: #ff9900; border-color: rgba(255,153,0,0.2); }
-  .tag.env { background: rgba(168,85,247,0.1); color: var(--purple); border-color: rgba(168,85,247,0.2); }
-
-  .divider {
-    height: 1px;
-    background: var(--border);
-    margin: 18px 0;
-  }
-
+  .input-row { background: var(--bg); border: 1px solid var(--border); padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+  .input-row input { background: none; border: none; outline: none; color: var(--text); font-family: inherit; font-size: 12px; width: 100%; }
+  
   .cta-btn {
-    width: 100%;
-    padding: 13px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.5px;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 8px;
+    width: 100%; padding: 14px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--green)); color: #000; transition: transform 0.2s;
   }
+  .cta-btn:hover { transform: translateY(-2px); }
 
-  .cta-btn.primary {
-    background: linear-gradient(135deg, var(--accent), var(--green));
-    color: #080c12;
-  }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  
+  .spin { display: inline-block; animation: rotate 1s linear infinite; }
+  @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-  .cta-btn.primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(0,212,255,0.25);
-  }
-
-  /* WORKSPACE */
-  .agent-tabs {
-    display: flex;
-    gap: 2px;
-    padding: 0 18px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(255,255,255,0.015);
-  }
-
-  .agent-tab {
-    padding: 12px 24px;
-    font-size: 11px;
-    color: var(--muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-
-  .agent-tab:hover { color: var(--text); }
-  .agent-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-
-  /* DISCOVERY VIEW */
-  .discovery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 14px;
-    padding: 18px;
-  }
-
-  .disc-card {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    animation: slideIn 0.3s ease-out;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .disc-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-
-  .disc-card-title {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .count-badge {
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-  }
-
-  .count-badge.blue { background: rgba(0,212,255,0.1); color: var(--accent); }
-  .count-badge.green { background: rgba(0,229,160,0.1); color: var(--green); }
-  .count-badge.amber { background: rgba(255,179,0,0.1); color: var(--amber); }
-  .count-badge.purple { background: rgba(168,85,247,0.1); color: var(--purple); }
-
-  .tree-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 0;
-    font-size: 11px;
-    color: var(--muted);
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: color 0.15s;
-    animation: fadeIn 0.4s ease-out;
-  }
-
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-  .tree-item:hover { color: var(--text); }
-  .tree-name { flex: 1; }
-  .tree-meta { font-size: 10px; color: var(--muted2); }
-
-  /* DAG DEPENDENCY VIEW */
-  .dag-canvas {
-    padding: 24px;
-    overflow-x: auto;
-  }
-
-  .dag-flow {
-    display: flex;
-    align-items: flex-start;
-    gap: 0;
-    min-width: 900px;
-  }
-
-  .dag-stage {
+  #workspace-content {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    flex-shrink: 0;
-    width: 200px;
+    gap: 32px;
   }
 
-  .dag-stage-label {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--muted2);
-    text-align: center;
-    margin-bottom: 8px;
-  }
-
-  .dag-node {
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    padding: 12px 14px;
-    background: var(--surface2);
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.15s;
-    position: relative;
-    opacity: 0;
-  }
-
-  .dag-node.visible { opacity: 1; animation: slideIn 0.3s ease-out; }
-
-  .dag-node:hover { border-color: var(--accent2); }
-  .dag-node.source { border-left: 3px solid var(--amber); }
-  .dag-node.ingest { border-left: 3px solid var(--accent); }
-  .dag-node.enrich { border-left: 3px solid var(--green); }
-  .dag-node.validate { border-left: 3px solid var(--purple); }
-
-  .dag-node-name { font-weight: 500; color: var(--text); margin-bottom: 3px; }
-  .dag-node-meta { font-size: 10px; color: var(--muted2); }
-
-  .dag-node-status {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-  }
-
-  .dag-node-status.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .dag-node-status.run { background: var(--amber); animation: pulse 1s infinite; }
-  .dag-node-status.idle { background: var(--muted2); }
-
-  .dag-connector {
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    margin-top: 35px;
-    flex-shrink: 0;
-    opacity: 0;
-  }
-
-  .dag-connector.visible { opacity: 1; transition: opacity 0.5s; }
-
-  .dag-line {
-    height: 1px;
-    background: linear-gradient(90deg, var(--border2), var(--accent2), var(--border2));
-    width: 50px;
-  }
-
-  .dag-arrow-head { color: var(--accent2); font-size: 12px; margin-left: -4px; }
-
-  /* RESULTS VIEW */
-  .results-header {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 10px;
-    padding: 18px;
-  }
-
-  .metric-card {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-  }
-
-  .metric-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 32px;
-    font-weight: 800;
-    margin-bottom: 4px;
-  }
-
-  .metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted2); }
-
-  .results-table { padding: 0 18px 18px; }
-
-  .tbl {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-  }
-
-  .tbl th {
-    text-align: left;
-    padding: 12px 10px;
-    color: var(--muted2);
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 1px solid var(--border);
-    font-weight: 400;
-  }
-
-  .tbl td {
-    padding: 12px 10px;
-    border-bottom: 1px solid var(--border);
-    color: var(--muted);
-  }
-
-  .result-pass { color: var(--green); }
-  .result-fail { color: var(--red); }
-  .result-warn { color: var(--amber); }
-
-  /* LOG TERMINAL */
-  .log-terminal {
-    background: #030608;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 18px;
-  }
-
-  .log-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .log-dot { width: 10px; height: 10px; border-radius: 50%; }
-
-  .log-body {
-    padding: 16px;
-    height: 200px;
-    overflow-y: auto;
-    font-size: 11px;
-    line-height: 1.7;
-    display: flex;
-    flex-direction: column-reverse; /* Newest logs at bottom, stay scrolled */
-  }
-
-  .log-line { display: flex; gap: 10px; margin-bottom: 4px; }
-  .log-time { color: var(--muted2); flex-shrink: 0; }
-  .log-level-info { color: var(--accent); }
-  .log-level-ok { color: var(--green); }
-  .log-msg { color: var(--muted); }
-
-  /* COMMON COMPONENTS */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 7px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-  }
-  .badge.blue { background: rgba(0,212,255,0.12); color: var(--accent); }
-  .badge.green { background: rgba(0,229,160,0.12); color: var(--green); }
-  .badge.amber { background: rgba(255,179,0,0.12); color: var(--amber); }
-
-  .checkbox-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 0;
-    font-size: 12px;
-    color: var(--muted);
-    cursor: pointer;
-  }
-
-  .checkbox-row input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
-
-  .spin {
-    display: inline-block;
-    animation: spinAnim 0.8s linear infinite;
-  }
-
-  @keyframes spinAnim {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  .progress-section { padding: 0 18px 18px; }
-  .progress-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-    animation: fadeIn 0.5s;
-  }
-  .progress-status { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
-  .progress-status.done { background: rgba(0,229,160,0.15); color: var(--green); }
-  .progress-status.run { background: rgba(255,179,0,0.15); color: var(--amber); }
-  .progress-status.wait { background: rgba(90,113,144,0.15); color: var(--muted2); }
-  .progress-info { flex: 1; }
-  .progress-label { font-size: 12px; color: var(--text); margin-bottom: 2px; }
-  .progress-sub { font-size: 10px; color: var(--muted2); }
-  .progress-bar-wrap { width: 100px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .progress-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--green), var(--accent)); transition: width 0.5s; }
-
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); padding: 20px; border-radius: 12px; text-align: center; }
+  .metric-val { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+  .metric-lab { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
 
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <!-- HEADER -->
-  <header>
+<div class="app-container">
+  <!-- LEFT: AGENT COMMAND CENTER -->
+  <aside class="agent-sidebar">
     <div class="logo">
       <div class="logo-icon">⚡</div>
       <div class="logo-text">Batch<span>Probe</span></div>
     </div>
-    <div class="header-actions">
-      <div style="font-size:11px; color:var(--muted); text-align: right;">
-        <div style="color:var(--text); font-weight:700;">REGRESSION AGENT</div>
-        <div>v2.4.1 · PRODUCTION MIRROR</div>
-      </div>
-      <button class="config-trigger" onclick="toggleModal(true)">
-        ⚙ Configure
-      </button>
-      <div class="status-pill">
-        <div class="status-dot" id="agent-status-dot"></div>
-        <span id="agent-status-text">AGENT IDLE</span>
-      </div>
-    </div>
-  </header>
 
-  <!-- PHASE PIPELINE -->
-  <div class="pipeline-nav">
-    <div class="phase-step">
-      <button class="phase-btn active" onclick="toggleModal(true)">
-        <div class="phase-num">1</div> Configure
-      </button>
-    </div>
-    <div class="phase-arrow">›</div>
-    <div class="phase-step">
-      <button class="phase-btn" id="phase-2-btn">
-        <div class="phase-num">2</div> Discover
-      </button>
-    </div>
-    <div class="phase-arrow">›</div>
-    <div class="phase-step">
-      <button class="phase-btn" id="phase-3-btn">
-        <div class="phase-num">3</div> DAG Analysis
-      </button>
-    </div>
-    <div class="phase-arrow">›</div>
-    <div class="phase-step">
-      <button class="phase-btn" id="phase-4-btn">
-        <div class="phase-num">4</div> Clone Env
-      </button>
-    </div>
-    <div class="phase-arrow">›</div>
-    <div class="phase-step">
-      <button class="phase-btn" id="phase-5-btn">
-        <div class="phase-num">5</div> Execute Jobs
-      </button>
-    </div>
-    <div class="phase-arrow">›</div>
-    <div class="phase-step">
-      <button class="phase-btn" id="phase-6-btn">
-        <div class="phase-num">6</div> Validate Results
-      </button>
-    </div>
-  </div>
-
-  <!-- MAIN WORKSPACE -->
-  <div class="main-grid">
-    <div class="panel" style="min-height:600px;">
-      
-      <!-- IDLE VIEW -->
-      <div id="idle-view">
-        <div class="idle-icon">⚡</div>
-        <div class="idle-title">BatchProbe Agent Offline</div>
-        <div class="idle-sub">Complete the agent configuration and click <strong>Launch Agent</strong> to begin the automated regression testing sequence.</div>
-        <button class="cta-btn primary" style="width: auto; padding: 12px 32px; margin-top: 32px;" onclick="toggleModal(true)">Open Config</button>
+    <div class="agent-status-card">
+      <div class="status-header">
+        <span>Agent Core v2.4</span>
+        <span>ID: #BP-882</span>
+      </div>
+      <div class="status-indicator">
+        <div class="status-dot" id="agent-dot"></div>
+        <span id="agent-text">Standby</span>
       </div>
 
-      <!-- ACTIVE WORKSPACE -->
-      <div id="active-workspace">
-        <div class="agent-tabs">
-          <div class="agent-tab active" id="tab-btn-discover" onclick="switchTab('discover')">🔍 Discovery</div>
-          <div class="agent-tab" id="tab-btn-dag" onclick="switchTab('dag')">🔗 DAG Map</div>
-          <div class="agent-tab" id="tab-btn-clone" onclick="switchTab('clone')">🧬 Env Clone</div>
-          <div class="agent-tab" id="tab-btn-exec" onclick="switchTab('exec')">▶ Execution</div>
-          <div class="agent-tab" id="tab-btn-results" onclick="switchTab('results')">✅ Results</div>
-        </div>
-
-        <!-- DISCOVER TAB -->
-        <div class="tab-content active" id="tab-discover">
-          <div class="discovery-grid" id="discovery-grid">
-            <!-- Dynamically populated -->
-          </div>
-
-          <div class="log-terminal">
-            <div class="log-header">
-              <div class="log-dot" style="background:#ff5f57"></div>
-              <div class="log-dot" style="background:#ffbd2e"></div>
-              <div class="log-dot" style="background:#28ca41"></div>
-              <span style="font-size:11px; color:var(--muted2); margin-left:8px;">agent.log</span>
-            </div>
-            <div class="log-body" id="master-log">
-              <!-- Logs flow here -->
-            </div>
-          </div>
-        </div>
-
-        <!-- DAG TAB -->
-        <div class="tab-content" id="tab-dag">
-          <div class="dag-canvas">
-            <div style="padding:0 0 14px; font-size:11px; color:var(--muted2);">Resolving dependency graph from Airflow DAG definitions...</div>
-            <div class="dag-flow" id="dag-flow-container">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-        </div>
-
-        <!-- CLONE TAB -->
-        <div class="tab-content" id="tab-clone">
-          <div class="progress-section" style="padding-top:24px" id="clone-progress-list">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-
-        <!-- EXEC TAB -->
-        <div class="tab-content" id="tab-exec">
-          <div class="progress-section" style="padding-top:24px" id="exec-progress-list">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-
-        <!-- RESULTS TAB -->
-        <div class="tab-content" id="tab-results">
-          <div class="results-header" id="results-summary" style="opacity: 0;">
-            <div class="metric-card"><div class="metric-value" style="color:var(--green)">31</div><div class="metric-label">Tests Passed</div></div>
-            <div class="metric-card"><div class="metric-value" style="color:var(--red)">2</div><div class="metric-label">Tests Failed</div></div>
-            <div class="metric-card"><div class="metric-value" style="color:var(--accent)">94%</div><div class="metric-label">Pass Rate</div></div>
-          </div>
-          <div class="results-table">
-            <div id="results-loader" style="text-align: center; padding: 40px; color: var(--muted2);">Waiting for validation suite to complete...</div>
-            <table class="tbl" id="results-table" style="display: none;">
-              <thead>
-                <tr><th>Check</th><th>Table</th><th>Actual</th><th>Result</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>Row count match</td><td>customer_enriched</td><td>2,100,441</td><td><span class="result-pass">✓ PASS</span></td></tr>
-                <tr><td>Null check: customer_id</td><td>customer_enriched</td><td>0 nulls</td><td><span class="result-pass">✓ PASS</span></td></tr>
-                <tr><td>Value range: discount_pct</td><td>orders_aggregated</td><td>0–1.42</td><td><span class="result-fail">✗ FAIL (Expected 0–1.0)</span></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div class="task-list" id="agent-tasks">
+        <!-- Live tasks will appear here -->
       </div>
     </div>
-  </div>
+
+    <div class="thought-stream" id="thought-stream">
+      <div class="thought-msg system">Waiting for deployment configuration...</div>
+    </div>
+
+    <div id="footer-actions" style="display: none;">
+      <button class="cta-btn" onclick="location.reload()" style="background: var(--surface2); color: var(--muted); border: 1px solid var(--border);">Restart Agent</button>
+    </div>
+  </aside>
+
+  <!-- RIGHT: DYNAMIC WORKSPACE -->
+  <main class="workspace">
+    <div id="welcome-view">
+      <div class="workspace-header">
+        <div>
+          <h1 class="workspace-title">Welcome to BatchProbe</h1>
+          <p class="workspace-sub">Autonomous Regression Testing for Big Data Pipelines</p>
+        </div>
+      </div>
+      <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: rgba(0,212,255,0.02); border: 1px dashed var(--border); border-radius: 16px; margin-top: 40px; color: var(--muted2); font-size: 14px;">
+        Initialize the agent to see analysis artifacts
+      </div>
+    </div>
+
+    <div id="workspace-content" style="display: none;">
+      <!-- Discovery Section -->
+      <section id="discovery-section">
+        <h2 class="card-title" style="margin-bottom: 16px; color: var(--accent);">01. Environment Discovery</h2>
+        <div class="discovery-grid" id="discovery-grid"></div>
+      </section>
+
+      <!-- DAG Section -->
+      <section id="dag-section" style="display: none;">
+        <h2 class="card-title" style="margin-bottom: 16px; color: var(--amber);">02. Dependency Mapping</h2>
+        <div class="dag-view" id="dag-container"></div>
+      </section>
+
+      <!-- Execution Section -->
+      <section id="exec-section" style="display: none;">
+        <h2 class="card-title" style="margin-bottom: 16px; color: var(--green);">03. Clone & Execution</h2>
+        <div id="clone-progress-container"></div>
+        <div id="exec-progress-container" style="margin-top: 24px;"></div>
+      </section>
+
+      <!-- Results Section -->
+      <section id="results-section" style="display: none;">
+        <h2 class="card-title" style="margin-bottom: 16px; color: var(--purple);">04. Validation Verdict</h2>
+        <div class="metric-grid">
+          <div class="metric-card"><div class="metric-val" style="color:var(--green)">31</div><div class="metric-lab">Passed</div></div>
+          <div class="metric-card"><div class="metric-val" style="color:var(--red)">2</div><div class="metric-lab">Failed</div></div>
+          <div class="metric-card"><div class="metric-val" style="color:var(--accent)">94%</div><div class="metric-lab">Health</div></div>
+        </div>
+      </section>
+    </div>
+  </main>
 </div>
 
-<!-- CONFIG MODAL -->
+<!-- START MODAL -->
 <div class="modal-overlay" id="config-modal">
   <div class="modal-container">
-    <div class="modal-header">
-      <div class="panel-title">Agent Configuration</div>
-      <button class="modal-close" onclick="toggleModal(false)">✕</button>
-    </div>
     <div class="modal-body">
-      <div class="section-label">Databricks Connection</div>
-      <div class="input-group">
-        <div class="input-row"><span class="input-icon">🏠</span><input type="text" value="myteam.azuredatabricks.net" /></div>
-        <div class="input-row"><span class="input-icon">🔑</span><input type="password" value="dapi_••••••••••••••••" /></div>
-        <div class="input-row"><span class="input-icon">📦</span><input type="text" value="prod_catalog.gold_schema" /></div>
-      </div>
-      <div class="tag-row">
-        <span class="tag db">🧱 prod_catalog</span>
-        <span class="tag db">📊 gold_schema</span>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="section-label">Airflow / DAG Scheduler</div>
-      <div class="input-group">
-        <div class="input-row"><span class="input-icon">🌐</span><input type="text" value="https://airflow.internal.myteam.io" /></div>
-        <div class="input-row"><span class="input-icon">🔒</span><input type="password" value="••••••••••••••••" /></div>
-      </div>
-      <div class="tag-row">
-        <span class="tag af">✈ batch_ingest_dag</span>
-        <span class="tag af">✈ enrichment_dag</span>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="section-label">Agent Options</div>
-      <label class="checkbox-row"><input type="checkbox" checked /> Deep-crawl table lineage</label>
-      <label class="checkbox-row"><input type="checkbox" checked /> Auto-resolve DAG dependencies</label>
-      <label class="checkbox-row"><input type="checkbox" checked /> Shallow-copy tables (S3 pointer)</label>
-
-      <div style="margin-top:24px;">
-        <button class="cta-btn primary" id="launch-btn" onclick="startAgent()">⚡ Launch Agent</button>
-        <button class="cta-btn secondary" style="border:none" onclick="toggleModal(false)">Close without changes</button>
-      </div>
+      <h2 style="font-family: Syne; margin-bottom: 20px;">Agent Setup</h2>
+      <div class="input-row"><input type="text" id="db-url" placeholder="Databricks URL" value="my-workspace.databricks.net"></div>
+      <div class="input-row"><input type="password" placeholder="Access Token" value="••••••••••••••••"></div>
+      <div class="input-row"><input type="text" placeholder="Target Schema" value="qa_regression_schema"></div>
+      <p style="font-size: 10px; color: var(--muted); margin: 15px 0;">Agent will crawl lineage, clone environment, and execute validation jobs sequentially.</p>
+      <button class="cta-btn" onclick="runAgent()">Launch Agent Sequence</button>
     </div>
   </div>
 </div>
 
 <script>
-  // UI Helpers
+  const thoughts = document.getElementById('thought-stream');
+  const tasks = document.getElementById('agent-tasks');
+  const discoveryGrid = document.getElementById('discovery-grid');
+  
+  function addThought(text, type='agent') {
+    const div = document.createElement('div');
+    div.className = `thought-msg ${type}`;
+    div.innerHTML = text;
+    thoughts.appendChild(div);
+    thoughts.scrollTop = thoughts.scrollHeight;
+  }
+
+  function addTask(id, text) {
+    const div = document.createElement('div');
+    div.className = 'task-item';
+    div.id = `task-${id}`;
+    div.innerHTML = `<div class="task-bullet"></div> <span>${text}</span>`;
+    tasks.appendChild(div);
+  }
+
+  function setTaskState(id, state) {
+    const el = document.getElementById(`task-${id}`);
+    if (el) {
+      el.className = `task-item ${state}`;
+    }
+  }
+
   function toggleModal(show) {
-    document.getElementById('config-modal').classList.toggle('open', show);
+    document.getElementById('config-modal').style.display = show ? 'flex' : 'none';
   }
 
-  function switchTab(name) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.agent-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
-    document.getElementById('tab-btn-' + name).classList.add('active');
-  }
-
-  function addLog(msg, level='info') {
-    const logBody = document.getElementById('master-log');
-    const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
-    const line = document.createElement('div');
-    line.className = 'log-line';
-    line.innerHTML = `<span class="log-time">${time}</span><span class="log-level-${level}">[${level.toUpperCase()}]</span><span class="log-msg">${msg}</span>`;
-    logBody.prepend(line);
-  }
-
-  function autoPhase(idx) {
-    const btns = document.querySelectorAll('.phase-btn');
-    btns.forEach((b, i) => {
-      b.classList.remove('active');
-      if (i < idx) b.classList.add('done');
-    });
-    btns[idx].classList.add('active');
-  }
-
-  // SIMULATION DATA
-  const discoveryCards = [
-    { title: "🧱 Databricks Tables", count: "24 found", color: "blue", items: ["customer_enriched", "orders_aggregated", "product_features"] },
-    { title: "✈ Airflow DAGs", count: "8 dags", color: "amber", items: ["batch_ingest_dag", "enrichment_dag", "data_quality_dag"] },
-    { title: "🪣 S3 Paths", count: "6 paths", color: "green", items: ["s3://…/prod/raw/events/", "s3://…/prod/processed/"] },
-    { title: "⚙ Databricks Jobs", count: "11 jobs", color: "purple", items: ["ingest_raw_events", "customer_enrichment", "dq_checks_suite"] }
-  ];
-
-  const dagStages = [
-    { label: "① Source", nodes: [{name: "s3_download", meta: "s3_download_dag", class: "source"}] },
-    { label: "② Ingest", nodes: [{name: "ingest_raw_events", meta: "batch_ingest_dag", class: "ingest"}] },
-    { label: "③ Enrich", nodes: [{name: "customer_enrichment", meta: "enrichment_dag", class: "enrich"}] },
-    { label: "④ Validate", nodes: [{name: "dq_checks_suite", meta: "data_quality_dag", class: "validate"}] }
-  ];
-
-  // MAIN SIMULATION LOOP
-  async function startAgent() {
-    const btn = document.getElementById('launch-btn');
-    btn.textContent = '⚡ Initializing Agent...';
-    btn.disabled = true;
-
-    await new Promise(r => setTimeout(r, 1000));
+  async function runAgent() {
     toggleModal(false);
-    
-    // Switch from idle to active
-    document.getElementById('idle-view').style.display = 'none';
-    const workspace = document.getElementById('active-workspace');
-    workspace.style.display = 'block';
-    setTimeout(() => workspace.classList.add('visible'), 10);
+    document.getElementById('welcome-view').style.display = 'none';
+    document.getElementById('workspace-content').style.display = 'flex';
+    document.getElementById('agent-dot').classList.add('active');
+    document.getElementById('agent-text').textContent = 'Processing';
+    document.getElementById('agent-text').style.color = 'var(--green)';
 
-    document.getElementById('agent-status-dot').classList.add('active');
-    document.getElementById('agent-status-text').textContent = 'AGENT ACTIVE';
+    // INIT
+    addThought("Initialization sequence started.", "system");
+    addTask('disc', 'Environment Discovery');
+    addTask('dag', 'Lineage Resolution');
+    addTask('clone', 'Environment Cloning');
+    addTask('exec', 'Job Orchestration');
+    addTask('val', 'Data Validation');
 
-    // 1. DISCOVERY PHASE
-    autoPhase(1);
-    switchTab('discover');
-    addLog("Connecting to Databricks REST API...");
-    await new Promise(r => setTimeout(r, 800));
-    addLog("Authenticated. Starting metadata crawl.", "ok");
+    // 1. DISCOVERY
+    setTaskState('disc', 'active');
+    addThought("<b>Phase 01:</b> Scanning Databricks Catalog and S3 buckets...", "planning");
+    await new Promise(r => setTimeout(r, 1500));
 
-    for (const card of discoveryCards) {
-      const container = document.getElementById('discovery-grid');
-      const div = document.createElement('div');
-      div.className = 'disc-card';
-      div.innerHTML = `
-        <div class="disc-card-header">
-          <div class="disc-card-title">${card.title}</div>
-          <span class="count-badge ${card.color}">${card.count}</span>
-        </div>
-        <div id="items-${card.color}"></div>
-      `;
-      container.appendChild(div);
-      addLog(`Discovered ${card.count} in ${card.title}...`);
-      
-      const itemContainer = div.querySelector(`#items-${card.color}`);
-      for (const item of card.items) {
-        await new Promise(r => setTimeout(r, 300));
-        const treeItem = document.createElement('div');
-        treeItem.className = 'tree-item';
-        treeItem.innerHTML = `<span class="tree-name">${item}</span>`;
-        itemContainer.appendChild(treeItem);
-      }
-      await new Promise(r => setTimeout(r, 500));
-    }
-    addLog("Discovery complete. Dependencies resolved.", "ok");
-    await new Promise(r => setTimeout(r, 1000));
-
-    // 2. DAG ANALYSIS
-    autoPhase(2);
-    switchTab('dag');
-    addLog("Building dependency graph from Airflow DAGs...");
-    const flowContainer = document.getElementById('dag-flow-container');
-    for (let i = 0; i < dagStages.length; i++) {
-      const stage = dagStages[i];
-      const stageDiv = document.createElement('div');
-      stageDiv.className = 'dag-stage';
-      stageDiv.innerHTML = `<div class="dag-stage-label">${stage.label}</div>`;
-      
-      for (const node of stage.nodes) {
-        const nodeDiv = document.createElement('div');
-        nodeDiv.className = `dag-node ${node.class}`;
-        nodeDiv.innerHTML = `<div class="dag-node-name">${node.name}</div><div class="dag-node-meta">${node.meta}</div><div class="dag-node-status idle"></div>`;
-        stageDiv.appendChild(nodeDiv);
-        setTimeout(() => nodeDiv.classList.add('visible'), 100);
-      }
-      
-      flowContainer.appendChild(stageDiv);
-      if (i < dagStages.length - 1) {
-        const conn = document.createElement('div');
-        conn.className = 'dag-connector';
-        conn.innerHTML = `<div class="dag-line"></div><span class="dag-arrow-head">›</span>`;
-        flowContainer.appendChild(conn);
-        setTimeout(() => conn.classList.add('visible'), 200);
-      }
-      await new Promise(r => setTimeout(r, 800));
-    }
-    addLog("DAG Map finalized.", "ok");
-    await new Promise(r => setTimeout(r, 1000));
-
-    // 3. CLONE ENV
-    autoPhase(3);
-    switchTab('clone');
-    addLog("Provisioning regression schema: qa_catalog.regression_schema");
-    const cloneList = document.getElementById('clone-progress-list');
-    const cloneSteps = [
-      { label: "Create regression schema", sub: "qa_catalog.regression_schema" },
-      { label: "Shallow-copy gold tables", sub: "13 tables mapped via S3 pointer" },
-      { label: "Shallow-copy silver tables", sub: "11 tables mapped via S3 pointer" }
+    const discData = [
+      { title: "Tables", count: "24", items: ["customer_gold", "orders_silver", "product_features"] },
+      { title: "DAGs", count: "8", items: ["batch_ingest", "enrichment_dag", "cleanup_job"] }
     ];
 
-    for (const step of cloneSteps) {
-      const item = document.createElement('div');
-      item.className = 'progress-item';
-      item.innerHTML = `
-        <div class="progress-status run">↻</div>
-        <div class="progress-info"><div class="progress-label">${step.label}</div><div class="progress-sub">${step.sub}</div></div>
-        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+    discData.forEach(d => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="card-header"><span class="card-title">${d.title}</span><span class="count-badge blue">${d.count} found</span></div>
+        ${d.items.map(i => `<div class="tree-item"><span>${i}</span><span class="tree-meta">OK</span></div>`).join('')}
       `;
-      cloneList.appendChild(item);
-      const bar = item.querySelector('.progress-bar-fill');
-      const status = item.querySelector('.progress-status');
-      
-      for (let p = 0; p <= 100; p += 25) {
-        bar.style.width = p + '%';
-        await new Promise(r => setTimeout(r, 400));
-      }
-      status.className = 'progress-status done';
-      status.textContent = '✓';
-      addLog(`Cloned: ${step.label}`, "ok");
-    }
-    await new Promise(r => setTimeout(r, 1000));
+      discoveryGrid.appendChild(card);
+    });
+    addThought("Crawl complete. 24 tables and 8 DAGs identified.", "ok");
+    setTaskState('disc', 'done');
 
-    // 4. EXECUTE JOBS
-    autoPhase(4);
-    switchTab('exec');
-    addLog("Starting sequential job execution...");
-    const execList = document.getElementById('exec-progress-list');
-    const execSteps = ["s3_download_dag.fetch_raw_files", "batch_ingest_dag.ingest_raw_events", "enrichment_dag.customer_enrichment"];
-
-    for (const step of execSteps) {
-      const item = document.createElement('div');
-      item.className = 'progress-item';
-      item.innerHTML = `
-        <div class="progress-status run">↻</div>
-        <div class="progress-info"><div class="progress-label">${step}</div><div class="progress-sub">Executing Spark Job...</div></div>
-        <span class="badge amber">RUNNING</span>
-      `;
-      execList.appendChild(item);
-      const status = item.querySelector('.progress-status');
-      const badge = item.querySelector('.badge');
-      
-      addLog(`Triggered: ${step}`);
-      await new Promise(r => setTimeout(r, 2000));
-      
-      status.className = 'progress-status done';
-      status.textContent = '✓';
-      badge.className = 'badge green';
-      badge.textContent = 'PASS';
-      addLog(`Finished: ${step}`, "ok");
-    }
-
-    // 5. VALIDATE RESULTS
-    autoPhase(5);
-    switchTab('results');
-    addLog("Running validation suite...");
+    // 2. DAG RESOLUTION
+    setTaskState('dag', 'active');
+    addThought("<b>Phase 02:</b> Reconstructing dependency graph from Airflow metadata...", "planning");
+    document.getElementById('dag-section').style.display = 'block';
     await new Promise(r => setTimeout(r, 1500));
-    document.getElementById('results-loader').style.display = 'none';
-    document.getElementById('results-table').style.display = 'table';
-    document.getElementById('results-summary').style.opacity = '1';
-    addLog("Regression test complete. 2 failures detected.", "ok");
     
-    document.getElementById('agent-status-text').textContent = 'REGRESSION COMPLETE';
-    document.getElementById('agent-status-dot').style.animation = 'none';
-  }
+    const dagContainer = document.getElementById('dag-container');
+    const stages = ["Source", "Ingest", "Enrich", "Validate"];
+    stages.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'dag-stage';
+      div.innerHTML = `<div style="font-size:9px; color:var(--muted); text-align:center;">${s}</div><div class="dag-node">Task_${s.toLowerCase()}</div>`;
+      dagContainer.appendChild(div);
+    });
+    addThought("Logical DAG constructed. Lineage chain is valid.", "ok");
+    setTaskState('dag', 'done');
 
-  // Handle outside modal click
-  window.onclick = e => { if (e.target.id === 'config-modal') toggleModal(false); };
+    // 3. CLONE
+    setTaskState('clone', 'active');
+    addThought("<b>Phase 03:</b> Deploying temporary regression environment...", "planning");
+    document.getElementById('exec-section').style.display = 'block';
+    
+    const cloneContainer = document.getElementById('clone-progress-container');
+    const cloneItem = document.createElement('div');
+    cloneItem.className = 'progress-item';
+    cloneItem.innerHTML = `<div class="p-icon"><span class="spin">◐</span></div><div class="p-bar"><div class="p-fill" style="width:0%"></div></div><span style="width:80px; text-align:right;">Cloning...</span>`;
+    cloneContainer.appendChild(cloneItem);
+    
+    for(let i=0; i<=100; i+=20) {
+      cloneItem.querySelector('.p-fill').style.width = i + '%';
+      await new Promise(r => setTimeout(r, 400));
+    }
+    cloneItem.querySelector('.p-icon').className = 'p-icon done';
+    cloneItem.querySelector('.p-icon').innerHTML = '✓';
+    addThought("Schema cloned to <code style='color:var(--accent)'>qa_regression_schema</code>.", "ok");
+    setTaskState('clone', 'done');
+
+    // 4. EXECUTE
+    setTaskState('exec', 'active');
+    addThought("<b>Phase 04:</b> Triggering spark jobs sequentially...", "planning");
+    const execContainer = document.getElementById('exec-progress-container');
+    const jobs = ["Ingest Raw", "Join Features", "Aggregate Sales"];
+    
+    for (const job of jobs) {
+      addThought(`Executing: ${job}...`);
+      const item = document.createElement('div');
+      item.className = 'progress-item';
+      item.innerHTML = `<div class="p-icon"><span class="spin">◐</span></div><div style="flex:1;">${job}</div><span class="count-badge blue" style="background:rgba(255,179,0,0.1); color:var(--amber);">RUNNING</span>`;
+      execContainer.appendChild(item);
+      await new Promise(r => setTimeout(r, 1500));
+      item.querySelector('.p-icon').className = 'p-icon done';
+      item.querySelector('.p-icon').innerHTML = '✓';
+      item.querySelector('.count-badge').textContent = 'DONE';
+      item.querySelector('.count-badge').className = 'count-badge blue';
+      item.querySelector('.count-badge').style.color = 'var(--green)';
+      item.querySelector('.count-badge').style.background = 'rgba(0,229,160,0.1)';
+    }
+    setTaskState('exec', 'done');
+
+    // 5. VALIDATE
+    setTaskState('val', 'active');
+    addThought("<b>Phase 05:</b> Comparing production state vs regression state...", "planning");
+    document.getElementById('results-section').style.display = 'block';
+    await new Promise(r => setTimeout(r, 1500));
+    addThought("Validation complete. Detected 2 data anomalies in <code style='color:var(--red)'>orders_silver</code>.", "ok");
+    setTaskState('val', 'done');
+    
+    document.getElementById('agent-text').textContent = 'Finished';
+    document.getElementById('footer-actions').style.display = 'block';
+  }
 </script>
+
 </body>
 </html>
