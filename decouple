@@ -1,0 +1,626 @@
+# Architectural Audit: Decoupling API Agent into Plain MCP Tools
+
+## 1. Current Architecture (What We Have)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  MCP Client (Copilot/IDE)                               │
+│  Sends: NL question + headers                           │
+└───────────────┬─────────────────────────────────────────┘
+                │ streamable-http (port 3000)
+                ▼
+┌─────────────────────────────────────────────────────────┐
+│  FastMCP Server + DynamicToolNamingMiddleware            │
+│  Tools: _query, _execute                                │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │  OpenAI Agents SDK (gpt-5.2)                       │ │
+│  │  Internal tools:                                    │ │
+│  │   • graphql_query / rest_call  (API execution)     │ │
+│  │   • sql_query                  (DuckDB post-proc)  │ │
+│  │   • search_schema              (regex on schema)   │ │
+│  │   • poll_until_done            (REST polling)      │ │
+│  │   • recipe tools               (cached pipelines)  │ │
+│  │  30-turn agent loop with system prompts            │ │
+│  └────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+```
+
+**The problem**: The org blocks running a streamable-http MCP server with an embedded agent (OpenAI Agents SDK making outbound LLM calls), but allows simple local MCP tools that execute Python scripts.
+
+---
+
+## 2. Proposed Architecture (What We Need)
+
+**Strip the agent. Expose the agent's internal capabilities as individual MCP tools. Let the copilot (Claude, GitHub Copilot, etc.) be the orchestrator.**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Copilot / IDE  (THE AGENT NOW)                         │
+│  Has system prompt with schema context                  │
+│  Orchestrates: fetch schema → build query → execute →   │
+│                post-process with SQL                     │
+└──┬──────┬──────┬──────┬──────┬──────┬───────────────────┘
+   │      │      │      │      │      │
+   ▼      ▼      ▼      ▼      ▼      ▼
+┌──────┐┌──────┐┌──────┐┌──────┐┌──────┐┌──────┐
+│fetch_││search││exec_ ││exec_ ││sql_  ││poll_ │
+│schema││schema││graphql││rest  ││query ││until │
+│      ││      ││      ││      ││      ││done  │
+└──────┘└──────┘└──────┘└──────┘└──────┘└──────┘
+   All plain MCP tools (stdio transport, local Python)
+   No embedded LLM. No streamable-http.
+```
+
+---
+
+## 3. Tool Decomposition Map
+
+### Tool 1: `fetch_schema`
+
+**Source**: `api_agent/agent/graphql_agent.py:231-259` (`_fetch_schema_context`) + `api_agent/rest/schema_loader.py` (`fetch_schema_context`)
+
+| Parameter    | Type   | Description                          |
+|-------------|--------|--------------------------------------|
+| `target_url` | `str`  | GraphQL endpoint or OpenAPI spec URL |
+| `api_type`   | `str`  | `"graphql"` or `"rest"`              |
+| `headers`    | `dict` (optional) | Auth headers to forward    |
+
+**Returns**: Compact schema (SDL for GraphQL, DSL for REST) + raw JSON stored in session state.
+
+**What it replaces**: The first thing the agent does in `process_query()` — `graphql_agent.py:590` and `rest_agent.py:681-686`.
+
+---
+
+### Tool 2: `search_schema`
+
+**Source**: `api_agent/agent/schema_search.py` (`create_search_schema_tool`)
+
+| Parameter  | Type  | Description                         |
+|-----------|-------|-------------------------------------|
+| `pattern`  | `str` | Regex pattern to search             |
+| `context`  | `int` | Lines of context (default 3)        |
+| `before`/`after` | `int` | Asymmetric context           |
+| `offset`   | `int` | Skip N matches (pagination)         |
+
+**Returns**: Grep-like matches from raw schema JSON.
+
+**Why needed**: Schemas are often truncated at 32K chars. The copilot needs this to explore parts that didn't fit.
+
+---
+
+### Tool 3: `execute_graphql`
+
+**Source**: `api_agent/agent/graphql_agent.py:331-396` (`_create_graphql_query_tool`) + `api_agent/graphql/client.py`
+
+| Parameter    | Type   | Description                                |
+|-------------|--------|--------------------------------------------|
+| `query`      | `str`  | GraphQL query (inline values, no $variables) |
+| `target_url` | `str`  | GraphQL endpoint                           |
+| `headers`    | `dict` (optional) | Auth headers                     |
+| `name`       | `str`  | Table name for SQL (default: `"data"`)     |
+
+**Returns**: Query results (truncated for context safety). Stores in DuckDB session.
+
+**Safety**: Mutations blocked (existing logic in `graphql/client.py`).
+
+---
+
+### Tool 4: `execute_rest`
+
+**Source**: `api_agent/agent/rest_agent.py:212-332` (`_create_rest_call_tool`) + `api_agent/rest/client.py`
+
+| Parameter      | Type   | Description                              |
+|---------------|--------|------------------------------------------|
+| `method`       | `str`  | HTTP method                              |
+| `path`         | `str`  | API path (e.g., `/users/{id}`)           |
+| `base_url`     | `str`  | Base URL                                 |
+| `path_params`  | `dict` (optional) | Path parameter values          |
+| `query_params` | `dict` (optional) | Query string params            |
+| `body`         | `dict` (optional) | Request body                   |
+| `headers`      | `dict` (optional) | Auth headers                   |
+| `name`         | `str`  | Table name for SQL (default: `"data"`)   |
+
+**Returns**: API response (truncated). Stores in DuckDB session.
+
+**Safety**: Unsafe methods blocked unless explicit allow patterns passed.
+
+---
+
+### Tool 5: `sql_query`
+
+**Source**: `api_agent/agent/graphql_agent.py:403-447` + `api_agent/executor.py`
+
+| Parameter | Type  | Description       |
+|----------|-------|-------------------|
+| `sql`     | `str` | DuckDB SQL query  |
+
+**Returns**: Query results from previously stored API responses.
+
+**Key dependency**: Requires prior `execute_graphql` or `execute_rest` calls to have stored tables.
+
+---
+
+### Tool 6: `poll_until_done` (optional)
+
+**Source**: `api_agent/agent/rest_agent.py:335-473`
+
+Same as current, but exposed directly. Only needed if your APIs have async polling patterns.
+
+---
+
+### Tool 7: `list_tables` (new helper)
+
+| Parameter | Type | Description |
+|----------|------|-------------|
+| *(none)* | — | — |
+
+**Returns**: List of available DuckDB table names from prior API calls.
+
+**Why needed**: Helps the copilot know what tables exist before writing SQL.
+
+---
+
+## 4. State Management Challenge (The Hardest Part)
+
+The current agent uses `ContextVar` to maintain state across tool calls within a single request:
+
+- `_query_results`: Dict of DuckDB tables built from API responses
+- `_last_result`: Most recent result for final output
+- `_raw_schema`: Raw schema JSON for `search_schema`
+
+**In a plain MCP tool model, each tool call is independent.** Three options:
+
+### Option A: stdio MCP server with in-process state (Recommended)
+
+Run as a **stdio** MCP server (not streamable-http). The copilot spawns the process, tools share in-memory state within the process lifetime. This is how most local MCP tools work.
+
+```python
+# State lives in module-level dict, scoped by a session concept
+_sessions: dict[str, SessionState] = {}
+
+class SessionState:
+    query_results: dict[str, Any] = {}  # DuckDB tables
+    raw_schema: str = ""                # For search_schema
+    last_result: Any = None
+```
+
+Since stdio is a single process with a single client, you don't even need session IDs — just module-level state.
+
+### Option B: Pass state explicitly (stateless tools)
+
+Each tool returns data, the copilot passes it to the next tool. No server-side state.
+
+- `fetch_schema` returns schema → copilot passes to `search_schema`
+- `execute_graphql` returns data → copilot passes to `sql_query`
+
+**Problem**: API responses can be huge. Passing them through the copilot's context window wastes tokens and may exceed limits. **Not recommended** for data-heavy workflows.
+
+### Option C: File-based state (hybrid)
+
+Tools write results to temp files (`/tmp/api-agent/session/*.json`). Each tool reads from disk. Works across process boundaries.
+
+**Recommendation: Option A** — stdio MCP server with in-process state. Simplest, matches the org's allowed pattern, and preserves the DuckDB workflow.
+
+---
+
+## 5. What Gets Dropped (and What the Copilot Replaces)
+
+| Current Feature | What Happens | Notes |
+|----------------|-------------|-------|
+| OpenAI Agents SDK | **Removed entirely** | No `agents` dependency |
+| System prompts (`prompts.py`) | **Moved to tool descriptions** | Copilot reads tool descriptions as its "schema" |
+| 30-turn agent loop | **Copilot handles** | Copilot decides when to call which tool |
+| Recipe extraction (`extractor.py`) | **Dropped (v1)** | Can be added back later as a separate tool |
+| Recipe execution (`runner.py`) | **Could keep as a tool** | `execute_recipe` with params |
+| Dynamic tool naming (`middleware.py`) | **Dropped** | Not needed — tools have fixed names |
+| Turn tracking (`progress.py`) | **Dropped** | Copilot manages its own turns |
+| Tracing (`tracing.py`) | **Optional keep** | Can trace individual tool calls |
+| `X-Target-URL` headers | **Become tool parameters** | Each call passes URL explicitly |
+| `return_directly` flag | **Dropped** | Copilot always sees results |
+
+---
+
+## 6. Implementation Skeleton
+
+```python
+# api_agent_tools/server.py — new entry point (stdio MCP)
+import json
+from typing import Any
+
+from fastmcp import FastMCP
+
+from api_agent.executor import execute_sql, extract_tables_from_response, truncate_for_context
+from api_agent.graphql import execute_query as graphql_fetch
+from api_agent.rest.client import execute_request
+from api_agent.rest.schema_loader import fetch_schema_context as rest_fetch_schema
+
+mcp = FastMCP("API Agent Tools")
+
+# ── In-process state (single client via stdio) ──────────────────────
+_state: dict[str, Any] = {
+    "query_results": {},    # DuckDB tables
+    "raw_schema": "",       # For search_schema
+    "last_result": None,
+    "base_url": "",
+}
+
+
+def _reset_state():
+    _state["query_results"] = {}
+    _state["raw_schema"] = ""
+    _state["last_result"] = None
+    _state["base_url"] = ""
+
+
+# ── Tool 1: fetch_schema ────────────────────────────────────────────
+@mcp.tool()
+async def fetch_schema(
+    target_url: str,
+    api_type: str,
+    headers: dict | None = None,
+) -> str:
+    """Fetch API schema. Returns compact schema for context.
+    For GraphQL: runs introspection query.
+    For REST: loads and parses OpenAPI 3.x spec.
+
+    Call this FIRST before other tools.
+    Use search_schema to explore parts that were truncated.
+    """
+    _reset_state()
+
+    if api_type == "graphql":
+        # Reuse _fetch_schema_context from graphql_agent
+        # Returns compact SDL + stores raw JSON in _state
+        ...
+        return schema_context
+    else:
+        schema_ctx, spec_base_url, raw_spec_json = await rest_fetch_schema(
+            target_url, headers
+        )
+        _state["raw_schema"] = raw_spec_json
+        _state["base_url"] = spec_base_url or ""
+        return schema_ctx
+
+
+# ── Tool 2: search_schema ──────────────────────────────────────────
+@mcp.tool()
+def search_schema(
+    pattern: str,
+    context: int = 3,
+    offset: int = 0,
+) -> str:
+    """Regex search on the raw schema JSON (from fetch_schema).
+    Returns grep-like matches with line numbers.
+    Use this to explore schema parts that were truncated in fetch_schema output.
+    """
+    # Reuse schema_search logic against _state["raw_schema"]
+    ...
+
+
+# ── Tool 3: execute_graphql ────────────────────────────────────────
+@mcp.tool()
+async def execute_graphql(
+    query: str,
+    target_url: str,
+    headers: dict | None = None,
+    name: str = "data",
+) -> str:
+    """Execute a GraphQL query. Result stored as DuckDB table for sql_query.
+
+    - Mutations are BLOCKED (read-only)
+    - Use inline values in the query, NOT $variables
+    - The 'name' param sets the DuckDB table name for later sql_query calls
+    """
+    result = await graphql_fetch(query, None, target_url, headers)
+
+    if result.get("success"):
+        data = result.get("data", {})
+        tables, schema_info = extract_tables_from_response(data, name)
+        _state["query_results"].update(tables)
+        stored = tables.get(name)
+        if stored is not None:
+            _state["last_result"] = stored
+
+        if schema_info:
+            return json.dumps({"success": True, "table": name, **schema_info}, indent=2)
+        if isinstance(stored, list):
+            return json.dumps({"success": True, **truncate_for_context(stored, name)}, indent=2)
+
+    return json.dumps(result, indent=2)
+
+
+# ── Tool 4: execute_rest ───────────────────────────────────────────
+@mcp.tool()
+async def execute_rest(
+    method: str,
+    path: str,
+    base_url: str = "",
+    path_params: dict | None = None,
+    query_params: dict | None = None,
+    body: dict | None = None,
+    headers: dict | None = None,
+    name: str = "data",
+    allow_unsafe_paths: list[str] | None = None,
+) -> str:
+    """Execute a REST API call. Result stored as DuckDB table for sql_query.
+
+    - POST/PUT/DELETE/PATCH blocked by default
+    - Pass allow_unsafe_paths globs to permit unsafe methods
+    - The 'name' param sets the DuckDB table name for later sql_query calls
+    """
+    url = base_url or _state.get("base_url", "")
+    if not url:
+        return json.dumps({"success": False, "error": "No base_url. Call fetch_schema first or pass base_url."})
+
+    result = await execute_request(
+        method, path, path_params, query_params, body,
+        base_url=url,
+        headers=headers,
+        allow_unsafe_paths=allow_unsafe_paths or [],
+    )
+
+    if result.get("success"):
+        data = result.get("data", {})
+        tables, schema_info = extract_tables_from_response(data, name)
+        _state["query_results"].update(tables)
+        stored = tables.get(name)
+        if stored is not None:
+            _state["last_result"] = stored
+
+        if schema_info:
+            return json.dumps({"success": True, "table": name, **schema_info}, indent=2)
+        if isinstance(stored, list):
+            return json.dumps({"success": True, **truncate_for_context(stored, name)}, indent=2)
+
+    return json.dumps(result, indent=2)
+
+
+# ── Tool 5: sql_query ──────────────────────────────────────────────
+@mcp.tool()
+def sql_query(sql: str) -> str:
+    """Run DuckDB SQL on stored API results.
+
+    Tables are created by prior execute_graphql / execute_rest calls.
+    Use list_tables to see available table names.
+
+    Supports: SELECT, JOIN, WHERE, GROUP BY, ORDER BY, LIMIT, window functions.
+    DuckDB extensions: UNNEST, list_*, struct_*, regexp_matches, etc.
+    """
+    if not _state["query_results"]:
+        return json.dumps({"success": False, "error": "No data. Call execute_graphql or execute_rest first."})
+
+    result = execute_sql(_state["query_results"], sql)
+
+    if result.get("success"):
+        rows = result.get("result", [])
+        _state["last_result"] = rows
+        if isinstance(rows, list):
+            return json.dumps({"success": True, **truncate_for_context(rows, "sql_result")}, indent=2)
+
+    return json.dumps(result, indent=2)
+
+
+# ── Tool 6: list_tables ────────────────────────────────────────────
+@mcp.tool()
+def list_tables() -> str:
+    """List available DuckDB tables from prior API calls.
+    Shows table names and row counts.
+    """
+    tables = {}
+    for name, data in _state["query_results"].items():
+        tables[name] = len(data) if isinstance(data, list) else 1
+    return json.dumps(tables, indent=2)
+
+
+# ── Entry point ─────────────────────────────────────────────────────
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+```
+
+---
+
+## 7. Copilot Workflow (What the User Sees)
+
+The copilot orchestrates the same steps the embedded agent used to do internally:
+
+```
+User: "What are the top 10 hotels in Bangkok by rating?"
+
+Copilot thinking:
+  1. Call fetch_schema(
+       target_url="https://api.example.com/graphql",
+       api_type="graphql"
+     )
+     → Gets schema: hotels(city: String!) -> [Hotel { id, name, rating, ... }]
+
+  2. Call execute_graphql(
+       query='{ hotels(city: "Bangkok") { name rating } }',
+       target_url="https://api.example.com/graphql"
+     )
+     → Gets results, stored as table "data"
+
+  3. Call sql_query(
+       sql="SELECT name, rating FROM data ORDER BY rating DESC LIMIT 10"
+     )
+     → Gets top 10
+
+  4. Formats and returns to user
+```
+
+### REST Example
+
+```
+User: "List active users from the admin API"
+
+Copilot thinking:
+  1. Call fetch_schema(
+       target_url="https://admin.example.com/openapi.json",
+       api_type="rest"
+     )
+     → Gets endpoints: GET /users(status?) -> User[]
+
+  2. Call execute_rest(
+       method="GET",
+       path="/users",
+       query_params={"status": "active"},
+       base_url="https://admin.example.com"
+     )
+     → Gets results, stored as table "data"
+
+  3. Call sql_query(
+       sql="SELECT id, name, email FROM data ORDER BY name"
+     )
+     → Gets sorted list
+
+  4. Formats and returns to user
+```
+
+---
+
+## 8. Critical Questions / Unknowns
+
+### Must-Answer Before Implementation
+
+1. **How does the org's MCP tool runner work?**
+   - Does it spawn a persistent process (stdio) or call tools individually (one-shot)?
+   - If one-shot: need file-based state (Option C) or stateless tools (Option B)
+   - If stdio: Option A works perfectly
+
+2. **Does the copilot support multi-step tool orchestration?**
+   - The whole approach relies on the copilot calling `fetch_schema` → `execute_graphql` → `sql_query` in sequence
+   - Claude and GPT-4 can do this. Simpler copilots may not
+   - If not: would need a single `query` tool wrapper (back to needing an embedded agent or very detailed prompting)
+
+3. **How do auth headers reach the tools?**
+   - Currently via `X-Target-Headers` HTTP header on the MCP request
+   - In stdio mode, headers don't exist. Options:
+     - Pass as tool parameters (each call includes `headers`)
+     - Environment variables (`API_AGENT_TARGET_HEADERS`)
+     - Config file (`.api-agent.json`)
+     - MCP resource (copilot reads a `config://` resource first)
+
+4. **Context window budget**
+   - Schema context can be 32K chars. The copilot sees this as tool output
+   - Does the copilot have enough context window? Claude Code does. Smaller models may struggle
+   - May need to make `fetch_schema` return a summary and rely more on `search_schema`
+
+5. **DuckDB dependency acceptable?**
+   - DuckDB is ~50MB. If the org has restrictions on native deps, `sql_query` needs an alternative (pandas, sqlite3)
+
+6. **Recipe system — keep or drop?**
+   - Recipes require an LLM call for extraction (`extractor.py` uses OpenAI)
+   - If dropping the LLM entirely, recipes can't be auto-created
+   - But could keep `execute_recipe` as a tool if recipes are pre-defined manually
+
+7. **Multiple APIs in one session?**
+   - Currently the middleware handles per-session API routing via headers
+   - In the new model, `target_url` is a parameter on each tool call
+   - But `sql_query` and `search_schema` are ambiguous with multiple schemas
+   - Solution: namespace by api_id, or keep it simple (one API per session)
+
+### Nice-to-Know
+
+8. **What copilot is being used?** Claude Code, GitHub Copilot, Cursor, Windsurf? Affects how tool descriptions should be written for optimal orchestration.
+
+9. **Do we need the `_execute` tool?** Currently it's a passthrough for re-running known queries. In the decomposed model, the copilot can just call `execute_graphql`/`execute_rest` directly.
+
+10. **Transport**: Can we use `stdio` transport? That's the standard for local MCP tools and avoids the streamable-http restriction entirely.
+
+---
+
+## 9. Migration Path
+
+### Phase 1: Extract core tools (1-2 days)
+- Create new `api_agent_tools/` package (or a new entry point in existing package)
+- Implement 6-7 tools using existing modules as libraries
+- stdio transport, in-process state
+- No agent dependency, no OpenAI SDK needed
+
+### Phase 2: Write tool descriptions for copilot (0.5 day)
+- Port key parts of `prompts.py` into tool descriptions
+- Add a `workflow_guide` MCP resource that the copilot can read for orchestration hints
+- Test with the copilot to ensure it chains tools correctly
+
+### Phase 3: Handle auth and config (0.5 day)
+- Decide on auth header passing mechanism
+- Add env var / config file support
+- Test with real APIs
+
+### Phase 4: (Optional) Add recipe execution
+- Keep `execute_recipe` as a tool for pre-defined recipes
+- Drop auto-extraction (requires LLM)
+
+---
+
+## 10. Module Reuse Assessment
+
+### Reusable As-Is (No Changes Needed)
+
+| Module | Path | Notes |
+|--------|------|-------|
+| GraphQL client | `api_agent/graphql/client.py` | Pure HTTP client |
+| REST client | `api_agent/rest/client.py` | Pure HTTP client |
+| OpenAPI loader | `api_agent/rest/schema_loader.py` | OpenAPI parser |
+| DuckDB executor | `api_agent/executor.py` | SQL execution + table extraction |
+| Config | `api_agent/config.py` | Trim agent-specific settings |
+| Recipe store | `api_agent/recipe/store.py` | If keeping recipes |
+| Recipe runner | `api_agent/recipe/runner.py` | If keeping recipes |
+
+### Reusable With Minor Refactor
+
+| Module | Path | Changes Needed |
+|--------|------|----------------|
+| Schema context builder | `api_agent/agent/graphql_agent.py` (`_build_schema_context`, `_fetch_schema_context`) | Extract into standalone function, decouple from ContextVar |
+| Schema search | `api_agent/agent/schema_search.py` | Accept raw schema string param instead of ContextVar |
+
+### Drop Entirely
+
+| Module | Path | Reason |
+|--------|------|--------|
+| Agent model config | `api_agent/agent/model.py` | No embedded LLM |
+| Turn tracking | `api_agent/agent/progress.py` | No turn tracking |
+| System prompts | `api_agent/agent/prompts.py` | Absorb into tool descriptions |
+| Dynamic middleware | `api_agent/middleware.py` | No dynamic naming needed |
+| Recipe extractor | `api_agent/recipe/extractor.py` | Requires LLM |
+| Tracing | `api_agent/tracing.py` | Optional — nice to have |
+
+---
+
+## 11. Dependency Changes
+
+### Current `pyproject.toml` dependencies (agent mode)
+```
+openai-agents     # OpenAI Agents SDK — REMOVE
+openai            # OpenAI client — REMOVE (unless keeping recipes)
+fastmcp           # MCP framework — KEEP
+httpx             # HTTP client — KEEP
+duckdb            # SQL engine — KEEP
+pydantic          # Validation — KEEP
+pydantic-settings # Config — KEEP
+uvicorn           # ASGI server — REMOVE (stdio doesn't need it)
+```
+
+### New dependencies (tools-only mode)
+```
+fastmcp           # MCP framework (stdio transport)
+httpx             # HTTP client
+duckdb            # SQL engine
+pydantic          # Validation
+pydantic-settings # Config
+pyyaml            # OpenAPI YAML parsing (already indirect dep)
+```
+
+**Net effect**: Remove `openai-agents`, `openai`, `uvicorn`. Significantly lighter footprint.
+
+---
+
+## 12. Risk Assessment
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Copilot doesn't chain tools well | High — broken workflows | Write detailed tool descriptions; test with target copilot; provide `workflow_guide` resource |
+| Schema too large for copilot context | Medium — truncated understanding | `fetch_schema` returns summary; `search_schema` for deep dives |
+| State lost between tool calls | High — sql_query fails | Use stdio (Option A); state lives in process memory |
+| Auth header management | Medium — can't reach protected APIs | Support multiple auth mechanisms (env var, config file, tool param) |
+| DuckDB native dep blocked by org | Medium — no SQL post-processing | Fallback to sqlite3 or pandas |
+| Multi-API confusion in sql_query | Low — wrong tables queried | Add `list_tables` tool; namespace tables by API |
