@@ -134,6 +134,10 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
+    background: var(--muted2);
+  }
+
+  .status-dot.active {
     background: var(--green);
     box-shadow: 0 0 8px var(--green);
     animation: pulse 2s infinite;
@@ -190,18 +194,6 @@
     border-color: var(--green2);
     color: var(--green);
     background: rgba(0,229,160,0.05);
-  }
-
-  .phase-btn.running {
-    border-color: var(--amber);
-    color: var(--amber);
-    background: rgba(255,179,0,0.06);
-    animation: runningGlow 1.5s infinite;
-  }
-
-  @keyframes runningGlow {
-    0%, 100% { box-shadow: 0 0 10px rgba(255,179,0,0.1); }
-    50% { box-shadow: 0 0 20px rgba(255,179,0,0.3); }
   }
 
   .phase-num {
@@ -284,6 +276,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
+    position: relative;
   }
 
   .panel-header {
@@ -302,6 +295,55 @@
     letter-spacing: 0.5px;
     text-transform: uppercase;
     color: var(--muted);
+  }
+
+  /* IDLE STATE */
+  #idle-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 20px;
+    text-align: center;
+  }
+
+  .idle-icon {
+    font-size: 48px;
+    margin-bottom: 24px;
+    opacity: 0.5;
+    animation: floating 3s ease-in-out infinite;
+  }
+
+  @keyframes floating {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .idle-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .idle-sub {
+    font-size: 12px;
+    color: var(--muted2);
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  /* WORKSPACE CONTENT (HIDDEN UNTIL START) */
+  #active-workspace {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease-in;
+  }
+
+  #active-workspace.visible {
+    display: block;
+    opacity: 1;
   }
 
   /* INPUTS */
@@ -446,6 +488,12 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .disc-card-header {
@@ -485,23 +533,14 @@
     border-bottom: 1px solid var(--border);
     cursor: pointer;
     transition: color 0.15s;
+    animation: fadeIn 0.4s ease-out;
   }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
   .tree-item:hover { color: var(--text); }
   .tree-name { flex: 1; }
   .tree-meta { font-size: 10px; color: var(--muted2); }
-
-  .expand-icon {
-    width: 14px;
-    height: 14px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    color: var(--muted2);
-  }
 
   /* DAG DEPENDENCY VIEW */
   .dag-canvas {
@@ -542,7 +581,10 @@
     cursor: pointer;
     transition: all 0.15s;
     position: relative;
+    opacity: 0;
   }
+
+  .dag-node.visible { opacity: 1; animation: slideIn 0.3s ease-out; }
 
   .dag-node:hover { border-color: var(--accent2); }
   .dag-node.source { border-left: 3px solid var(--amber); }
@@ -572,7 +614,10 @@
     padding: 0 12px;
     margin-top: 35px;
     flex-shrink: 0;
+    opacity: 0;
   }
+
+  .dag-connector.visible { opacity: 1; transition: opacity 0.5s; }
 
   .dag-line {
     height: 1px;
@@ -658,13 +703,15 @@
 
   .log-body {
     padding: 16px;
-    height: 250px;
+    height: 200px;
     overflow-y: auto;
     font-size: 11px;
     line-height: 1.7;
+    display: flex;
+    flex-direction: column-reverse; /* Newest logs at bottom, stay scrolled */
   }
 
-  .log-line { display: flex; gap: 10px; }
+  .log-line { display: flex; gap: 10px; margin-bottom: 4px; }
   .log-time { color: var(--muted2); flex-shrink: 0; }
   .log-level-info { color: var(--accent); }
   .log-level-ok { color: var(--green); }
@@ -713,6 +760,7 @@
     gap: 12px;
     padding: 12px 0;
     border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.5s;
   }
   .progress-status { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
   .progress-status.done { background: rgba(0,229,160,0.15); color: var(--green); }
@@ -748,8 +796,8 @@
         ⚙ Configure
       </button>
       <div class="status-pill">
-        <div class="status-dot"></div>
-        AGENT READY
+        <div class="status-dot" id="agent-status-dot"></div>
+        <span id="agent-status-text">AGENT IDLE</span>
       </div>
     </div>
   </header>
@@ -763,31 +811,31 @@
     </div>
     <div class="phase-arrow">›</div>
     <div class="phase-step">
-      <button class="phase-btn" onclick="setPhase(1, this)">
+      <button class="phase-btn" id="phase-2-btn">
         <div class="phase-num">2</div> Discover
       </button>
     </div>
     <div class="phase-arrow">›</div>
     <div class="phase-step">
-      <button class="phase-btn" onclick="setPhase(2, this)">
+      <button class="phase-btn" id="phase-3-btn">
         <div class="phase-num">3</div> DAG Analysis
       </button>
     </div>
     <div class="phase-arrow">›</div>
     <div class="phase-step">
-      <button class="phase-btn" onclick="setPhase(3, this)">
+      <button class="phase-btn" id="phase-4-btn">
         <div class="phase-num">4</div> Clone Env
       </button>
     </div>
     <div class="phase-arrow">›</div>
     <div class="phase-step">
-      <button class="phase-btn" onclick="setPhase(4, this)">
+      <button class="phase-btn" id="phase-5-btn">
         <div class="phase-num">5</div> Execute Jobs
       </button>
     </div>
     <div class="phase-arrow">›</div>
     <div class="phase-step">
-      <button class="phase-btn" onclick="setPhase(5, this)">
+      <button class="phase-btn" id="phase-6-btn">
         <div class="phase-num">6</div> Validate Results
       </button>
     </div>
@@ -795,174 +843,89 @@
 
   <!-- MAIN WORKSPACE -->
   <div class="main-grid">
-    <div class="panel" style="min-height:700px;">
-      <div class="agent-tabs">
-        <div class="agent-tab active" onclick="switchTab('discover')">🔍 Discovery</div>
-        <div class="agent-tab" onclick="switchTab('dag')">🔗 DAG Map</div>
-        <div class="agent-tab" onclick="switchTab('clone')">🧬 Env Clone</div>
-        <div class="agent-tab" onclick="switchTab('exec')">▶ Execution</div>
-        <div class="agent-tab" onclick="switchTab('results')">✅ Results</div>
+    <div class="panel" style="min-height:600px;">
+      
+      <!-- IDLE VIEW -->
+      <div id="idle-view">
+        <div class="idle-icon">⚡</div>
+        <div class="idle-title">BatchProbe Agent Offline</div>
+        <div class="idle-sub">Complete the agent configuration and click <strong>Launch Agent</strong> to begin the automated regression testing sequence.</div>
+        <button class="cta-btn primary" style="width: auto; padding: 12px 32px; margin-top: 32px;" onclick="toggleModal(true)">Open Config</button>
       </div>
 
-      <!-- DISCOVER TAB -->
-      <div class="tab-content active" id="tab-discover">
-        <div class="discovery-grid">
-          <div class="disc-card">
-            <div class="disc-card-header">
-              <div class="disc-card-title">🧱 Databricks Tables</div>
-              <span class="count-badge blue">24 found</span>
-            </div>
-            <div class="tree-item">
-              <span class="tree-icon">📁</span>
-              <span class="tree-name">prod_catalog.gold_schema</span>
-              <div class="expand-icon">▾</div>
-            </div>
-            <div style="padding-left:14px">
-              <div class="tree-item"><span class="tree-name">customer_enriched</span><span class="tree-meta">Δ 2.1M rows</span></div>
-              <div class="tree-item"><span class="tree-name">orders_aggregated</span><span class="tree-meta">Δ 890K rows</span></div>
-              <div class="tree-item"><span class="tree-name">product_features</span><span class="tree-meta">Δ 120K rows</span></div>
-            </div>
+      <!-- ACTIVE WORKSPACE -->
+      <div id="active-workspace">
+        <div class="agent-tabs">
+          <div class="agent-tab active" id="tab-btn-discover" onclick="switchTab('discover')">🔍 Discovery</div>
+          <div class="agent-tab" id="tab-btn-dag" onclick="switchTab('dag')">🔗 DAG Map</div>
+          <div class="agent-tab" id="tab-btn-clone" onclick="switchTab('clone')">🧬 Env Clone</div>
+          <div class="agent-tab" id="tab-btn-exec" onclick="switchTab('exec')">▶ Execution</div>
+          <div class="agent-tab" id="tab-btn-results" onclick="switchTab('results')">✅ Results</div>
+        </div>
+
+        <!-- DISCOVER TAB -->
+        <div class="tab-content active" id="tab-discover">
+          <div class="discovery-grid" id="discovery-grid">
+            <!-- Dynamically populated -->
           </div>
 
-          <div class="disc-card">
-            <div class="disc-card-header">
-              <div class="disc-card-title">✈ Airflow DAGs</div>
-              <span class="count-badge amber">8 dags</span>
+          <div class="log-terminal">
+            <div class="log-header">
+              <div class="log-dot" style="background:#ff5f57"></div>
+              <div class="log-dot" style="background:#ffbd2e"></div>
+              <div class="log-dot" style="background:#28ca41"></div>
+              <span style="font-size:11px; color:var(--muted2); margin-left:8px;">agent.log</span>
             </div>
-            <div class="tree-item"><span class="tree-name">batch_ingest_dag</span><span class="badge amber">SCHED</span></div>
-            <div class="tree-item"><span class="tree-name">enrichment_dag</span><span class="badge green">OK</span></div>
-            <div class="tree-item"><span class="tree-name">data_quality_dag</span><span class="badge green">OK</span></div>
-          </div>
-
-          <div class="disc-card">
-            <div class="disc-card-header">
-              <div class="disc-card-title">🪣 S3 Paths</div>
-              <span class="count-badge green">6 paths</span>
+            <div class="log-body" id="master-log">
+              <!-- Logs flow here -->
             </div>
-            <div class="tree-item"><span class="tree-name">s3://…/prod/raw/events/</span><span class="tree-meta">88 GB</span></div>
-            <div class="tree-item"><span class="tree-name">s3://…/prod/processed/</span><span class="tree-meta">342 GB</span></div>
-          </div>
-
-          <div class="disc-card">
-            <div class="disc-card-header">
-              <div class="disc-card-title">⚙ Databricks Jobs</div>
-              <span class="count-badge purple">11 jobs</span>
-            </div>
-            <div class="tree-item"><span class="tree-name">ingest_raw_events</span><span class="badge amber">spark</span></div>
-            <div class="tree-item"><span class="tree-name">customer_enrichment</span><span class="badge amber">spark</span></div>
-            <div class="tree-item"><span class="tree-name">dq_checks_suite</span><span class="badge blue">python</span></div>
           </div>
         </div>
 
-        <div class="log-terminal">
-          <div class="log-header">
-            <div class="log-dot" style="background:#ff5f57"></div>
-            <div class="log-dot" style="background:#ffbd2e"></div>
-            <div class="log-dot" style="background:#28ca41"></div>
-            <span style="font-size:11px; color:var(--muted2); margin-left:8px;">agent.log — discovery</span>
-          </div>
-          <div class="log-body" id="discovery-log">
-            <div class="log-line"><span class="log-time">09:14:01</span><span class="log-level-info">[INFO]</span><span class="log-msg">Agent initializing — connecting to Databricks workspace...</span></div>
-            <div class="log-line"><span class="log-time">09:14:02</span><span class="log-level-ok">[OK]</span><span class="log-msg">Databricks REST API authenticated (token verified)</span></div>
-            <div class="log-line"><span class="log-time">09:14:04</span><span class="log-level-ok">[OK]</span><span class="log-msg">gold_schema: 13 tables discovered, lineage captured</span></div>
-            <div class="log-line"><span class="log-time">09:14:07</span><span class="log-level-ok">[OK]</span><span class="log-msg">8 Airflow DAGs retrieved — parsing task dependencies...</span></div>
-            <div class="log-line"><span class="log-time">09:14:10</span><span class="log-level-ok">[OK]</span><span class="log-msg">Discovery complete. Ready for environment cloning.</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- DAG TAB -->
-      <div class="tab-content" id="tab-dag">
-        <div class="dag-canvas">
-          <div style="padding:0 0 14px; font-size:11px; color:var(--muted2);">Resolved dependency graph — full lineage traversal complete</div>
-          <div class="dag-flow">
-            <div class="dag-stage">
-              <div class="dag-stage-label">① Source</div>
-              <div class="dag-node source"><div class="dag-node-name">s3_download</div><div class="dag-node-meta">s3_download_dag</div><div class="dag-node-status ok" id="node-s3"></div></div>
-              <div class="dag-node source"><div class="dag-node-name">api_fetch</div><div class="dag-node-meta">batch_ingest_dag</div><div class="dag-node-status ok"></div></div>
-            </div>
-            <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
-            <div class="dag-stage">
-              <div class="dag-stage-label">② Ingest</div>
-              <div class="dag-node ingest"><div class="dag-node-name">ingest_raw_events</div><div class="dag-node-meta">batch_ingest_dag</div><div class="dag-node-status ok"></div></div>
-              <div class="dag-node ingest"><div class="dag-node-name">ingest_users</div><div class="dag-node-meta">batch_ingest_dag</div><div class="dag-node-status ok"></div></div>
-            </div>
-            <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
-            <div class="dag-stage">
-              <div class="dag-stage-label">③ Enrich</div>
-              <div class="dag-node enrich"><div class="dag-node-name">customer_enrichment</div><div class="dag-node-meta">enrichment_dag</div><div class="dag-node-status idle" id="node-enrich"></div></div>
-              <div class="dag-node enrich"><div class="dag-node-name">order_aggregation</div><div class="dag-node-meta">enrichment_dag</div><div class="dag-node-status idle"></div></div>
-            </div>
-            <div class="dag-connector"><div class="dag-line"></div><span class="dag-arrow-head">›</span></div>
-            <div class="dag-stage">
-              <div class="dag-stage-label">④ Validate</div>
-              <div class="dag-node validate"><div class="dag-node-name">dq_checks_suite</div><div class="dag-node-meta">data_quality_dag</div><div class="dag-node-status idle" id="node-dq"></div></div>
+        <!-- DAG TAB -->
+        <div class="tab-content" id="tab-dag">
+          <div class="dag-canvas">
+            <div style="padding:0 0 14px; font-size:11px; color:var(--muted2);">Resolving dependency graph from Airflow DAG definitions...</div>
+            <div class="dag-flow" id="dag-flow-container">
+              <!-- Dynamically populated -->
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- CLONE TAB -->
-      <div class="tab-content" id="tab-clone">
-        <div class="progress-section" style="padding-top:24px">
-          <div class="progress-item">
-            <div class="progress-status done" id="clone-step-1-icon">✓</div>
-            <div class="progress-info"><div class="progress-label">Create regression schema</div><div class="progress-sub">qa_catalog.regression_schema — DDL applied</div></div>
-            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="clone-step-1-bar" style="width:100%"></div></div>
-          </div>
-          <div class="progress-item">
-            <div class="progress-status done" id="clone-step-2-icon">✓</div>
-            <div class="progress-info"><div class="progress-label">Shallow-copy gold tables (13)</div><div class="progress-sub">CREATE TABLE AS SELECT with LIMIT 0 + S3 pointer</div></div>
-            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="clone-step-2-bar" style="width:100%"></div></div>
-          </div>
-          <div class="progress-item">
-            <div class="progress-status wait" id="clone-step-3-icon">○</div>
-            <div class="progress-info"><div class="progress-label">Shallow-copy silver tables (11)</div><div class="progress-sub" id="clone-step-3-sub">Pending raw_events_clean...</div></div>
-            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="clone-step-3-bar" style="width:0%"></div></div>
+        <!-- CLONE TAB -->
+        <div class="tab-content" id="tab-clone">
+          <div class="progress-section" style="padding-top:24px" id="clone-progress-list">
+            <!-- Dynamically populated -->
           </div>
         </div>
-      </div>
 
-      <!-- EXEC TAB -->
-      <div class="tab-content" id="tab-exec">
-        <div class="progress-section" style="padding-top:24px">
-          <div class="progress-item">
-            <div class="progress-status wait" id="exec-step-1-icon">○</div>
-            <div class="progress-info"><div class="progress-label">① s3_download_dag.fetch_raw_files</div><div class="progress-sub" id="exec-step-1-sub">Queued...</div></div>
-            <span class="badge blue" id="exec-step-1-badge">QUEUED</span>
-          </div>
-          <div class="progress-item">
-            <div class="progress-status wait" id="exec-step-2-icon">○</div>
-            <div class="progress-info"><div class="progress-label">② batch_ingest_dag.ingest_raw_events</div><div class="progress-sub" id="exec-step-2-sub">Waiting for source download...</div></div>
-            <span class="badge blue" id="exec-step-2-badge">QUEUED</span>
-          </div>
-          <div class="progress-item">
-            <div class="progress-status wait" id="exec-step-3-icon">○</div>
-            <div class="progress-info"><div class="progress-label">④ enrichment_dag.customer_enrichment</div><div class="progress-sub" id="exec-step-3-sub">Waiting for ingestion...</div></div>
-            <span class="badge blue" id="exec-step-3-badge">QUEUED</span>
+        <!-- EXEC TAB -->
+        <div class="tab-content" id="tab-exec">
+          <div class="progress-section" style="padding-top:24px" id="exec-progress-list">
+            <!-- Dynamically populated -->
           </div>
         </div>
-      </div>
 
-      <!-- RESULTS TAB -->
-      <div class="tab-content" id="tab-results">
-        <div class="results-header" id="results-summary" style="opacity: 0.3">
-          <div class="metric-card"><div class="metric-value" style="color:var(--green)">31</div><div class="metric-label">Tests Passed</div></div>
-          <div class="metric-card"><div class="metric-value" style="color:var(--red)">2</div><div class="metric-label">Tests Failed</div></div>
-          <div class="metric-card"><div class="metric-value" style="color:var(--accent)">94%</div><div class="metric-label">Pass Rate</div></div>
-        </div>
-        <div class="results-table">
-          <div id="results-loader" style="text-align: center; padding: 40px; color: var(--muted2);">Waiting for validation suite to complete...</div>
-          <table class="tbl" id="results-table" style="display: none;">
-            <thead>
-              <tr><th>Check</th><th>Table</th><th>Actual</th><th>Result</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Row count match</td><td>customer_enriched</td><td>2,100,441</td><td><span class="result-pass">✓ PASS</span></td></tr>
-              <tr><td>Null check: customer_id</td><td>customer_enriched</td><td>0 nulls</td><td><span class="result-pass">✓ PASS</span></td></tr>
-              <tr><td>Value range: discount_pct</td><td>orders_aggregated</td><td>0–1.42</td><td><span class="result-fail">✗ FAIL (Expected 0–1.0)</span></td></tr>
-            </tbody>
-          </table>
+        <!-- RESULTS TAB -->
+        <div class="tab-content" id="tab-results">
+          <div class="results-header" id="results-summary" style="opacity: 0;">
+            <div class="metric-card"><div class="metric-value" style="color:var(--green)">31</div><div class="metric-label">Tests Passed</div></div>
+            <div class="metric-card"><div class="metric-value" style="color:var(--red)">2</div><div class="metric-label">Tests Failed</div></div>
+            <div class="metric-card"><div class="metric-value" style="color:var(--accent)">94%</div><div class="metric-label">Pass Rate</div></div>
+          </div>
+          <div class="results-table">
+            <div id="results-loader" style="text-align: center; padding: 40px; color: var(--muted2);">Waiting for validation suite to complete...</div>
+            <table class="tbl" id="results-table" style="display: none;">
+              <thead>
+                <tr><th>Check</th><th>Table</th><th>Actual</th><th>Result</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Row count match</td><td>customer_enriched</td><td>2,100,441</td><td><span class="result-pass">✓ PASS</span></td></tr>
+                <tr><td>Null check: customer_id</td><td>customer_enriched</td><td>0 nulls</td><td><span class="result-pass">✓ PASS</span></td></tr>
+                <tr><td>Value range: discount_pct</td><td>orders_aggregated</td><td>0–1.42</td><td><span class="result-fail">✗ FAIL (Expected 0–1.0)</span></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -1002,16 +965,10 @@
 
       <div class="divider"></div>
 
-      <div class="section-label">S3 / Storage</div>
-      <div class="input-row"><span class="input-icon">🪣</span><input type="text" value="s3://company-data-lake/prod/" /></div>
-
-      <div class="divider"></div>
-
       <div class="section-label">Agent Options</div>
       <label class="checkbox-row"><input type="checkbox" checked /> Deep-crawl table lineage</label>
       <label class="checkbox-row"><input type="checkbox" checked /> Auto-resolve DAG dependencies</label>
       <label class="checkbox-row"><input type="checkbox" checked /> Shallow-copy tables (S3 pointer)</label>
-      <label class="checkbox-row"><input type="checkbox" /> Schema drift detection</label>
 
       <div style="margin-top:24px;">
         <button class="cta-btn primary" id="launch-btn" onclick="startAgent()">⚡ Launch Agent</button>
@@ -1022,35 +979,27 @@
 </div>
 
 <script>
-  // Toggle Modal
+  // UI Helpers
   function toggleModal(show) {
-    const modal = document.getElementById('config-modal');
-    if (show) {
-      modal.classList.add('open');
-    } else {
-      modal.classList.remove('open');
-    }
+    document.getElementById('config-modal').classList.toggle('open', show);
   }
 
-  // Tabs
   function switchTab(name) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.agent-tab').forEach(t => t.classList.remove('active'));
-    const el = document.getElementById('tab-' + name);
-    if (el) el.classList.add('active');
-    const map = {discover:0, dag:1, clone:2, exec:3, results:4};
-    document.querySelectorAll('.agent-tab')[map[name]]?.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('tab-btn-' + name).classList.add('active');
   }
 
-  // Phase nav manually (if clicked)
-  function setPhase(idx, btn) {
-    document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const tabs = ['discover','discover','dag','clone','exec','results'];
-    switchTab(tabs[idx] || 'discover');
+  function addLog(msg, level='info') {
+    const logBody = document.getElementById('master-log');
+    const time = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = `<span class="log-time">${time}</span><span class="log-level-${level}">[${level.toUpperCase()}]</span><span class="log-msg">${msg}</span>`;
+    logBody.prepend(line);
   }
 
-  // Utility to update phase buttons automatically
   function autoPhase(idx) {
     const btns = document.querySelectorAll('.phase-btn');
     btns.forEach((b, i) => {
@@ -1060,101 +1009,183 @@
     btns[idx].classList.add('active');
   }
 
-  // Main Simulation Loop
+  // SIMULATION DATA
+  const discoveryCards = [
+    { title: "🧱 Databricks Tables", count: "24 found", color: "blue", items: ["customer_enriched", "orders_aggregated", "product_features"] },
+    { title: "✈ Airflow DAGs", count: "8 dags", color: "amber", items: ["batch_ingest_dag", "enrichment_dag", "data_quality_dag"] },
+    { title: "🪣 S3 Paths", count: "6 paths", color: "green", items: ["s3://…/prod/raw/events/", "s3://…/prod/processed/"] },
+    { title: "⚙ Databricks Jobs", count: "11 jobs", color: "purple", items: ["ingest_raw_events", "customer_enrichment", "dq_checks_suite"] }
+  ];
+
+  const dagStages = [
+    { label: "① Source", nodes: [{name: "s3_download", meta: "s3_download_dag", class: "source"}] },
+    { label: "② Ingest", nodes: [{name: "ingest_raw_events", meta: "batch_ingest_dag", class: "ingest"}] },
+    { label: "③ Enrich", nodes: [{name: "customer_enrichment", meta: "enrichment_dag", class: "enrich"}] },
+    { label: "④ Validate", nodes: [{name: "dq_checks_suite", meta: "data_quality_dag", class: "validate"}] }
+  ];
+
+  // MAIN SIMULATION LOOP
   async function startAgent() {
     const btn = document.getElementById('launch-btn');
-    btn.textContent = '⚡ Agent Launching...';
+    btn.textContent = '⚡ Initializing Agent...';
     btn.disabled = true;
-    
-    // 1. Initial Launch
+
     await new Promise(r => setTimeout(r, 1000));
     toggleModal(false);
-    btn.textContent = '⚡ Launch Agent';
-    btn.disabled = false;
+    
+    // Switch from idle to active
+    document.getElementById('idle-view').style.display = 'none';
+    const workspace = document.getElementById('active-workspace');
+    workspace.style.display = 'block';
+    setTimeout(() => workspace.classList.add('visible'), 10);
 
-    // Reset UI state for new run
-    document.querySelectorAll('.phase-btn').forEach(b => {
-      b.classList.remove('done');
-      b.classList.remove('active');
-    });
+    document.getElementById('agent-status-dot').classList.add('active');
+    document.getElementById('agent-status-text').textContent = 'AGENT ACTIVE';
 
-    // 2. DISCOVER PHASE
+    // 1. DISCOVERY PHASE
     autoPhase(1);
     switchTab('discover');
-    await new Promise(r => setTimeout(r, 2000));
+    addLog("Connecting to Databricks REST API...");
+    await new Promise(r => setTimeout(r, 800));
+    addLog("Authenticated. Starting metadata crawl.", "ok");
 
-    // 3. DAG ANALYSIS
+    for (const card of discoveryCards) {
+      const container = document.getElementById('discovery-grid');
+      const div = document.createElement('div');
+      div.className = 'disc-card';
+      div.innerHTML = `
+        <div class="disc-card-header">
+          <div class="disc-card-title">${card.title}</div>
+          <span class="count-badge ${card.color}">${card.count}</span>
+        </div>
+        <div id="items-${card.color}"></div>
+      `;
+      container.appendChild(div);
+      addLog(`Discovered ${card.count} in ${card.title}...`);
+      
+      const itemContainer = div.querySelector(`#items-${card.color}`);
+      for (const item of card.items) {
+        await new Promise(r => setTimeout(r, 300));
+        const treeItem = document.createElement('div');
+        treeItem.className = 'tree-item';
+        treeItem.innerHTML = `<span class="tree-name">${item}</span>`;
+        itemContainer.appendChild(treeItem);
+      }
+      await new Promise(r => setTimeout(r, 500));
+    }
+    addLog("Discovery complete. Dependencies resolved.", "ok");
+    await new Promise(r => setTimeout(r, 1000));
+
+    // 2. DAG ANALYSIS
     autoPhase(2);
     switchTab('dag');
-    document.getElementById('node-enrich').className = 'dag-node-status run';
-    await new Promise(r => setTimeout(r, 2000));
+    addLog("Building dependency graph from Airflow DAGs...");
+    const flowContainer = document.getElementById('dag-flow-container');
+    for (let i = 0; i < dagStages.length; i++) {
+      const stage = dagStages[i];
+      const stageDiv = document.createElement('div');
+      stageDiv.className = 'dag-stage';
+      stageDiv.innerHTML = `<div class="dag-stage-label">${stage.label}</div>`;
+      
+      for (const node of stage.nodes) {
+        const nodeDiv = document.createElement('div');
+        nodeDiv.className = `dag-node ${node.class}`;
+        nodeDiv.innerHTML = `<div class="dag-node-name">${node.name}</div><div class="dag-node-meta">${node.meta}</div><div class="dag-node-status idle"></div>`;
+        stageDiv.appendChild(nodeDiv);
+        setTimeout(() => nodeDiv.classList.add('visible'), 100);
+      }
+      
+      flowContainer.appendChild(stageDiv);
+      if (i < dagStages.length - 1) {
+        const conn = document.createElement('div');
+        conn.className = 'dag-connector';
+        conn.innerHTML = `<div class="dag-line"></div><span class="dag-arrow-head">›</span>`;
+        flowContainer.appendChild(conn);
+        setTimeout(() => conn.classList.add('visible'), 200);
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
+    addLog("DAG Map finalized.", "ok");
+    await new Promise(r => setTimeout(r, 1000));
 
-    // 4. CLONE ENV
+    // 3. CLONE ENV
     autoPhase(3);
     switchTab('clone');
-    const c3i = document.getElementById('clone-step-3-icon');
-    const c3b = document.getElementById('clone-step-3-bar');
-    const c3s = document.getElementById('clone-step-3-sub');
-    
-    c3i.className = 'progress-status run';
-    c3i.textContent = '↻';
-    
-    for(let i=0; i<=100; i+=20) {
-      c3b.style.width = i + '%';
-      c3s.textContent = `Processing tables... ${i}%`;
-      await new Promise(r => setTimeout(r, 400));
-    }
-    c3i.className = 'progress-status done';
-    c3i.textContent = '✓';
-    c3s.textContent = 'Silver tables cloned successfully.';
+    addLog("Provisioning regression schema: qa_catalog.regression_schema");
+    const cloneList = document.getElementById('clone-progress-list');
+    const cloneSteps = [
+      { label: "Create regression schema", sub: "qa_catalog.regression_schema" },
+      { label: "Shallow-copy gold tables", sub: "13 tables mapped via S3 pointer" },
+      { label: "Shallow-copy silver tables", sub: "11 tables mapped via S3 pointer" }
+    ];
 
-    // 5. EXECUTE JOBS
+    for (const step of cloneSteps) {
+      const item = document.createElement('div');
+      item.className = 'progress-item';
+      item.innerHTML = `
+        <div class="progress-status run">↻</div>
+        <div class="progress-info"><div class="progress-label">${step.label}</div><div class="progress-sub">${step.sub}</div></div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+      `;
+      cloneList.appendChild(item);
+      const bar = item.querySelector('.progress-bar-fill');
+      const status = item.querySelector('.progress-status');
+      
+      for (let p = 0; p <= 100; p += 25) {
+        bar.style.width = p + '%';
+        await new Promise(r => setTimeout(r, 400));
+      }
+      status.className = 'progress-status done';
+      status.textContent = '✓';
+      addLog(`Cloned: ${step.label}`, "ok");
+    }
+    await new Promise(r => setTimeout(r, 1000));
+
+    // 4. EXECUTE JOBS
     autoPhase(4);
     switchTab('exec');
-    
-    const steps = [1, 2, 3];
-    for (const s of steps) {
-      const icon = document.getElementById(`exec-step-${s}-icon`);
-      const sub = document.getElementById(`exec-step-${s}-sub`);
-      const badge = document.getElementById(`exec-step-${s}-badge`);
+    addLog("Starting sequential job execution...");
+    const execList = document.getElementById('exec-progress-list');
+    const execSteps = ["s3_download_dag.fetch_raw_files", "batch_ingest_dag.ingest_raw_events", "enrichment_dag.customer_enrichment"];
+
+    for (const step of execSteps) {
+      const item = document.createElement('div');
+      item.className = 'progress-item';
+      item.innerHTML = `
+        <div class="progress-status run">↻</div>
+        <div class="progress-info"><div class="progress-label">${step}</div><div class="progress-sub">Executing Spark Job...</div></div>
+        <span class="badge amber">RUNNING</span>
+      `;
+      execList.appendChild(item);
+      const status = item.querySelector('.progress-status');
+      const badge = item.querySelector('.badge');
       
-      icon.className = 'progress-status run';
-      icon.textContent = '↻';
-      sub.textContent = 'Running Spark job...';
-      badge.className = 'badge amber';
-      badge.textContent = 'RUNNING';
-      
+      addLog(`Triggered: ${step}`);
       await new Promise(r => setTimeout(r, 2000));
       
-      icon.className = 'progress-status done';
-      icon.textContent = '✓';
-      sub.textContent = 'Completed successfully.';
+      status.className = 'progress-status done';
+      status.textContent = '✓';
       badge.className = 'badge green';
       badge.textContent = 'PASS';
+      addLog(`Finished: ${step}`, "ok");
     }
 
-    // 6. VALIDATE RESULTS
+    // 5. VALIDATE RESULTS
     autoPhase(5);
     switchTab('results');
-    await new Promise(r => setTimeout(r, 1000));
+    addLog("Running validation suite...");
+    await new Promise(r => setTimeout(r, 1500));
     document.getElementById('results-loader').style.display = 'none';
     document.getElementById('results-table').style.display = 'table';
     document.getElementById('results-summary').style.opacity = '1';
+    addLog("Regression test complete. 2 failures detected.", "ok");
     
-    // Mark final phase done
-    setTimeout(() => {
-        document.querySelectorAll('.phase-btn')[5].classList.remove('active');
-        document.querySelectorAll('.phase-btn')[5].classList.add('done');
-    }, 1000);
+    document.getElementById('agent-status-text').textContent = 'REGRESSION COMPLETE';
+    document.getElementById('agent-status-dot').style.animation = 'none';
   }
 
-  // Close modal on click outside
-  window.onclick = function(event) {
-    const modal = document.getElementById('config-modal');
-    if (event.target == modal) {
-      toggleModal(false);
-    }
-  }
+  // Handle outside modal click
+  window.onclick = e => { if (e.target.id === 'config-modal') toggleModal(false); };
 </script>
 </body>
 </html>
